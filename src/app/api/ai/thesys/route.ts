@@ -111,13 +111,14 @@ export async function POST(req: NextRequest) {
   messages.push({ role: "user", content: prompt.content });
 
   // Model mapping - using TheSys C1 models
-  const modelConfig = {
-    smart: "c1/openai/gpt-5/v-20251230",
-    normal: "c1/anthropic/claude-sonnet-4/v-20251230",
+  const modelConfig: Record<string, string> = {
     fast: "c1-exp/anthropic/claude-haiku-4.5/v-20251230",
+    normal: "c1/anthropic/claude-sonnet-4/v-20251230",
+    "pro-smart": "c1/openai/gpt-5/v-20251230",
+    "super-smart": "c1/openai/gpt-5/v-20251230",
   };
 
-  const selectedModel = modelConfig[model || "normal"];
+  const selectedModel = modelConfig[model || "normal"] || modelConfig["normal"];
 
   try {
   const llmStream = await client.chat.completions.create({
