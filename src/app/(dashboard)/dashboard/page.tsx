@@ -31,14 +31,14 @@ import {
 } from "lucide-react";
 
 const tools = [
-  { name: "Essay Writer", desc: "Academic essays with proper structure", icon: FileText, href: "/dashboard/essay-writer" },
-  { name: "AI Detector", desc: "Check content authenticity", icon: ShieldCheck, href: "/dashboard/ai-detector" },
-  { name: "Humanizer", desc: "Transform AI to human writing", icon: Wand2, href: "/dashboard/humanizer" },
-  { name: "Answer Finder", desc: "Instant accurate answers", icon: Search, href: "/dashboard/answer-finder" },
-  { name: "Homework Help", desc: "Step-by-step solutions", icon: BookOpen, href: "/dashboard/homework-helper" },
-  { name: "Study Guide", desc: "Personalized study materials", icon: GraduationCap, href: "/dashboard/study-guide" },
-  { name: "Presentations", desc: "Professional slide decks", icon: Presentation, href: "/dashboard/presentation" },
-  { name: "AI Tutor", desc: "1-on-1 learning assistant", icon: MessageCircle, href: "/dashboard/tutor" },
+  { name: "Essay Writer", desc: "Create structured essays with citations and proper formatting", icon: FileText, href: "/dashboard/essay-writer", tags: ["APA/MLA", "All levels", "Auto-humanize"], color: "from-blue-500 to-blue-600" },
+  { name: "AI Detector", desc: "Analyze text to detect AI-generated content with detailed reports", icon: ShieldCheck, href: "/dashboard/ai-detector", tags: ["GPTZero", "Originality", "Reports"], color: "from-emerald-500 to-emerald-600" },
+  { name: "Humanizer", desc: "Transform AI text into natural human writing that bypasses detection", icon: Wand2, href: "/dashboard/humanizer", tags: ["0% AI", "Multi-pass", "Diff view"], color: "from-violet-500 to-violet-600" },
+  { name: "Answer Finder", desc: "Get instant, accurate answers to any question with sources", icon: Search, href: "/dashboard/answer-finder", tags: ["Web search", "Images", "Accurate"], color: "from-amber-500 to-amber-600" },
+  { name: "Homework Help", desc: "Step-by-step solutions for math, science, and more", icon: BookOpen, href: "/dashboard/homework-helper", tags: ["Step-by-step", "All subjects", "Images"], color: "from-rose-500 to-rose-600" },
+  { name: "Study Guide", desc: "Create comprehensive study guides tailored to your curriculum", icon: GraduationCap, href: "/dashboard/study-guide", tags: ["Custom topics", "Mind maps", "Q&A"], color: "from-cyan-500 to-cyan-600" },
+  { name: "Presentations", desc: "Generate professional slide decks with AI-powered design", icon: Presentation, href: "/dashboard/presentation", tags: ["PowerPoint", "Charts", "Images"], color: "from-orange-500 to-orange-600" },
+  { name: "AI Tutor", desc: "Personal 1-on-1 learning assistant that adapts to your style", icon: MessageCircle, href: "/dashboard/tutor", tags: ["Chat", "Personalized", "24/7"], color: "from-pink-500 to-pink-600" },
 ];
 
 const stats = [
@@ -109,11 +109,39 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Get today's date as string (YYYY-MM-DD)
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  // Check if cached news is from today
+  const getCachedNews = (): { news: NewsArticle[]; date: string } | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = localStorage.getItem("kay-daily-news");
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // Invalid cache
+    }
+    return null;
+  };
+
   // Fetch AI-generated news based on user profile from settings
-  const fetchNews = async () => {
+  const fetchNews = async (forceRefresh = false) => {
+    // Check cache first
+    const cached = getCachedNews();
+    const today = getTodayDate();
+
+    // If we have cached news from today, use it (unless force refresh)
+    if (!forceRefresh && cached && cached.date === today && cached.news.length > 0) {
+      setNews(cached.news);
+      setNewsLoading(false);
+      return;
+    }
+
     setNewsLoading(true);
     try {
-      // Get user profile data from localStorage (saved in settings page)
+      // Get user profile data from database
       let userProfile = {
         subjects: ["Programming", "AI/ML", "Mathematics", "Web Development"],
         schoolName: "",
@@ -122,19 +150,25 @@ export default function DashboardPage() {
         studyGoal: "Learn programming and AI",
       };
 
-      // Try to load saved settings from localStorage
-      if (typeof window !== "undefined") {
-        const savedSettings = localStorage.getItem("kay-user-settings");
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          userProfile = {
-            subjects: settings.subjects || userProfile.subjects,
-            schoolName: settings.schoolName || userProfile.schoolName,
-            major: settings.major || userProfile.major,
-            educationLevel: settings.educationLevel || userProfile.educationLevel,
-            studyGoal: settings.studyGoal || userProfile.studyGoal,
-          };
+      // Try to load from database
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok) {
+          const data = await res.json();
+          const user = data.user;
+          if (user) {
+            userProfile = {
+              subjects: user.subjects?.length > 0 ? user.subjects : userProfile.subjects,
+              schoolName: user.school || userProfile.schoolName,
+              major: user.major || userProfile.major,
+              educationLevel: user.educationLevel || userProfile.educationLevel,
+              studyGoal: user.studyGoal || userProfile.studyGoal,
+            };
+          }
         }
+      } catch (e) {
+        console.error("Failed to load user profile:", e);
+        // Use default profile if database fetch fails
       }
 
       const response = await fetch("/api/news/generate", {
@@ -145,17 +179,42 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setNews(data.news);
+        // Take only 4 news items
+        const newsItems = (data.news || []).slice(0, 4);
+        setNews(newsItems);
+
+        // Cache the news with today's date
+        localStorage.setItem("kay-daily-news", JSON.stringify({
+          news: newsItems,
+          date: today,
+        }));
       }
     } catch (error) {
       console.error("Error fetching news:", error);
+      // If fetch fails, show cached news even if from previous day
+      const cached = getCachedNews();
+      if (cached && cached.news.length > 0) {
+        setNews(cached.news);
+      }
     } finally {
       setNewsLoading(false);
     }
   };
 
+  // Load news - check cache first (instant), then fetch if needed
   useEffect(() => {
-    fetchNews();
+    // Immediately show cached news if available
+    const cached = getCachedNews();
+    const today = getTodayDate();
+    
+    if (cached && cached.date === today && cached.news.length > 0) {
+      // Today's news cached - show immediately, no loading
+      setNews(cached.news);
+      setNewsLoading(false);
+    } else {
+      // Need to fetch new news
+      fetchNews();
+    }
   }, []);
 
   const getGreeting = () => {
@@ -326,8 +385,9 @@ export default function DashboardPage() {
               </span>
             </div>
             <button
-              onClick={fetchNews}
+              onClick={() => fetchNews(true)}
               disabled={newsLoading}
+              title="Refresh news"
               className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${newsLoading ? "animate-spin" : ""}`} />
@@ -501,30 +561,69 @@ export default function DashboardPage() {
           <span className="text-xs text-gray-400 ml-2">8 tools</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {tools.map((tool, i) => (
             <Link
               key={tool.name}
               href={tool.href}
               onMouseEnter={() => setHoveredTool(i)}
               onMouseLeave={() => setHoveredTool(null)}
-              className={`group relative bg-white rounded-xl p-5 border border-gray-100 transition-all duration-300 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-1 hover:border-blue-200 overflow-hidden ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-              style={{ transitionDelay: `${1100 + i * 50}ms` }}
+              className={`tool-card group relative bg-white rounded-2xl p-6 border border-gray-100 hover:border-gray-200 shadow-lg shadow-gray-100/50 hover:shadow-2xl hover:shadow-gray-200/50 cursor-pointer overflow-hidden hover:-translate-y-2 ${mounted ? "animate-fade-in-up" : "opacity-0"}`}
+              style={{ animationDelay: `${i * 50}ms` }}
             >
-              <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-lg shadow-blue-500/20">
-                <tool.icon className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{tool.name}</h3>
-                <div className={`w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center transition-all duration-300 ${hoveredTool === i ? "opacity-100" : "opacity-0"}`}>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-blue-600" />
+              {/* Gradient overlay on hover */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+              
+              <div className="relative z-10">
+                {/* Icon */}
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-xl mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                  <tool.icon className="w-7 h-7 text-white" />
+                </div>
+                
+                {/* Title */}
+                <h3 className="font-bold text-lg text-gray-900 mb-2">{tool.name}</h3>
+                
+                {/* Description */}
+                <p className="text-gray-500 text-sm mb-4 line-clamp-2">{tool.desc}</p>
+                
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5">
+                  {tool.tags.map((tag, j) => (
+                    <span key={j} className="px-2 py-0.5 rounded-lg bg-gray-50 text-xs text-gray-600">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-400">{tool.desc}</p>
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-b-xl" />
+              
+              {/* Arrow icon on hover */}
+              <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg`}>
+                  <ArrowUpRight className="w-5 h-5 text-white" />
+                </div>
+              </div>
             </Link>
           ))}
         </div>
+        
+        <style jsx>{`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease forwards;
+          }
+          .tool-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+          }
+        `}</style>
       </div>
 
       {/* Quick Actions */}
@@ -535,7 +634,7 @@ export default function DashboardPage() {
               <Play className="w-5 h-5 text-white ml-0.5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-0.5">New to Kay AI?</h3>
+              <h3 className="font-semibold text-gray-900 mb-0.5">New to Kabyar?</h3>
               <p className="text-sm text-gray-500 mb-2">Start with Essay Writer or AI Tutor.</p>
               <Link href="/dashboard/essay-writer" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
                 Get Started<ArrowUpRight className="w-3.5 h-3.5" />

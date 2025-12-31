@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { chat, type AIProvider, DEFAULT_PROVIDER } from "@/lib/ai-providers";
+import { chatWithTier, type ModelTier } from "@/lib/ai-providers";
 import { createDetectorPrompt } from "@/lib/prompts";
+import { getLanguageInstruction, type AILanguage } from "@/lib/language-utils";
+import { checkCredits, deductCredits } from "@/lib/credits";
 import { z } from "zod";
 
 const detectSchema = z.object({
   text: z.string().min(50).max(50000),
   provider: z.enum(["openai", "claude", "gemini", "grok"]).optional(),
-  model: z.enum(["smart", "normal", "fast"]).optional(),
+  model: z.enum(["super-smart", "pro-smart", "normal", "fast"]).optional(),
+  language: z.enum(["en", "my", "zh", "th", "ko", "ja"]).optional(),
 });
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -27,16 +30,37 @@ export async function POST(request: Request) {
       );
     }
 
-    const provider: AIProvider = parsed.data.provider || DEFAULT_PROVIDER;
-    const modelTier = parsed.data.model || "normal";
-    const systemPrompt = createDetectorPrompt();
+    const modelTier = (parsed.data.model || "fast") as ModelTier;
+    const wordCount = parsed.data.text.split(/\s+/).length;
+
+    // Check credits before processing
+    const creditCheck = await checkCredits(session.user.id, modelTier, wordCount);
+    if (!creditCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: creditCheck.error,
+          creditsNeeded: creditCheck.creditsNeeded,
+          creditsRemaining: creditCheck.creditsRemaining,
+        },
+        { status: 402 }
+      );
+    }
+
+    // Deduct credits BEFORE processing
+    if (creditCheck.creditsNeeded && creditCheck.creditsNeeded > 0) {
+      await deductCredits(session.user.id, creditCheck.creditsNeeded, "detect", modelTier);
+    }
+
+    const language = parsed.data.language as AILanguage || "en";
+    const languageInstruction = getLanguageInstruction(language);
+    const systemPrompt = `${createDetectorPrompt()}\n\nIMPORTANT LANGUAGE REQUIREMENT: ${languageInstruction}`;
 
     const messages = [
       { role: "system" as const, content: systemPrompt },
       { role: "user" as const, content: `Analyze this text for AI-generated content:\n\n${parsed.data.text}` },
     ];
 
-    const response = await chat(provider, messages, modelTier);
+    const response = await chatWithTier(messages, modelTier);
 
     try {
       // Try to parse as JSON

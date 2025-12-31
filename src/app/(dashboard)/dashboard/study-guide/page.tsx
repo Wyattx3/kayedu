@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { GraduationCap, Loader2, ArrowRight, Copy, Check, Download, Sparkles, Paperclip, X, Image, FileText, File } from "lucide-react";
+import { ModelSelector, type ModelType, type UploadedFile, useAILanguage } from "@/components/ai";
+import { GraduationCap, Loader2, ArrowRight, Copy, Check, Download, Sparkles, Paperclip, X, Image, FileText, File, GitBranch, FileSearch, Trash2 } from "lucide-react";
+import { MindMap } from "@/components/ui/mind-map";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
+import { KayLoading } from "@/components/ui/kay-loading";
 
 const formatOptions = [
   { value: "comprehensive", label: "Full" },
@@ -24,14 +26,16 @@ export default function StudyGuidePage() {
   const [level, setLevel] = useState("igcse");
   const [format, setFormat] = useState("comprehensive");
   const [notes, setNotes] = useState("");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  const [selectedModel, setSelectedModel] = useState<ModelType>("fast");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [viewMode, setViewMode] = useState<"guide" | "mindmap">("guide");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const aiLanguage = useAILanguage();
 
   useEffect(() => setMounted(true), []);
 
@@ -91,9 +95,20 @@ export default function StudyGuidePage() {
       const response = await fetch("/api/ai/study-guide", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: fileContext ? `${fileContext}\n${topic}` : topic, subject, level, format, notes, model: selectedModel }),
+        body: JSON.stringify({ topic: fileContext ? `${fileContext}\n${topic}` : topic, subject, level, format, notes, model: selectedModel, language: aiLanguage }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${data.creditsNeeded} credits but have ${data.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          return;
+        }
+        throw new Error("Failed");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -108,6 +123,7 @@ export default function StudyGuidePage() {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setIsLoading(false);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: 6 } }));
     }
   };
 
@@ -141,9 +157,15 @@ export default function StudyGuidePage() {
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+        <div className="hidden lg:flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-full">
+            <GitBranch className="w-3.5 h-3.5 text-purple-600" />
+            <span className="text-xs font-medium text-purple-700">Mind Map</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
           <Sparkles className="w-3.5 h-3.5 text-blue-600" />
           <span className="text-xs font-medium text-blue-700">4 formats</span>
+          </div>
         </div>
       </div>
 
@@ -160,7 +182,18 @@ export default function StudyGuidePage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">Topic</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Topic</Label>
+                {topic && (
+                  <button
+                    onClick={() => { setTopic(""); setNotes(""); setUploadedFiles([]); }}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Clear input"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <Input
                 placeholder="e.g., World War 2, Photosynthesis"
                 value={topic}
@@ -274,9 +307,34 @@ export default function StudyGuidePage() {
               <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
               <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              <span className="ml-2 text-sm font-medium text-gray-700">Guide</span>
+              
+              {/* View Mode Tabs */}
+              <div className="ml-3 flex items-center gap-1 p-0.5 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setViewMode("guide")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                    viewMode === "guide"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <FileSearch className="w-3.5 h-3.5" />
+                  Guide
+                </button>
+                <button
+                  onClick={() => setViewMode("mindmap")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                    viewMode === "mindmap"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <GitBranch className="w-3.5 h-3.5" />
+                  Mind Map
+                </button>
+              </div>
             </div>
-            {result && (
+            {result && viewMode === "guide" && (
               <div className="flex gap-1.5">
                 <button onClick={copyToClipboard} className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 rounded border border-gray-200 transition-all">
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -288,26 +346,38 @@ export default function StudyGuidePage() {
               </div>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {result ? (
-              <article className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-600 prose-li:text-gray-600">
+          <div className="flex-1 overflow-y-auto">
+            {viewMode === "guide" ? (
+              result ? (
+                <article className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-600 prose-li:text-gray-600 p-4">
                 <ReactMarkdown>{result}</ReactMarkdown>
               </article>
             ) : (
-              <div className="h-full flex items-center justify-center">
+                <div className="h-full flex items-center justify-center p-4">
                 {isLoading ? (
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2 animate-pulse">
-                      <GraduationCap className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-gray-500 text-sm font-medium">Creating guide...</p>
-                  </div>
+                  <KayLoading message="Creating study guide..." dark={false} />
                 ) : (
                   <div className="text-center">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">
                       <GraduationCap className="w-7 h-7 text-gray-300" />
                     </div>
                     <p className="text-gray-400 text-sm">Study guide will appear here</p>
+                    </div>
+                  )}
+                </div>
+              )
+            ) : (
+              <div className="h-full min-h-[500px] overflow-auto">
+                {result ? (
+                  <MindMap content={result} topic={topic} className="w-full h-full" />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">
+                        <GitBranch className="w-7 h-7 text-gray-300" />
+                      </div>
+                      <p className="text-gray-400 text-sm">Mind map will appear after generating</p>
+                    </div>
                   </div>
                 )}
               </div>

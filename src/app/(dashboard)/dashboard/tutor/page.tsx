@@ -5,6 +5,7 @@ import { C1Component, ThemeProvider } from "@thesysai/genui-sdk";
 import "@crayonai/react-ui/styles/index.css";
 import { useChatHistory, type ChatMessage as ChatMessageType } from "@/hooks/use-chat-history";
 import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
+import { useToast } from "@/hooks/use-toast";
 import {
   MessageSquare,
   Plus,
@@ -24,6 +25,9 @@ import {
   Image,
   FileText,
   File,
+  User,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 
 // Suggestion card component with premium animations
@@ -114,6 +118,7 @@ export default function TutorPage() {
     updateMessage,
     isLoaded,
   } = useChatHistory();
+  const { toast } = useToast();
 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -126,44 +131,80 @@ export default function TutorPage() {
   const [hoveredThread, setHoveredThread] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  const [selectedModel, setSelectedModel] = useState<ModelType>("fast");
+  const [usePersonalization, setUsePersonalization] = useState(true);
+  const [userProfile, setUserProfile] = useState<{
+    name?: string;
+    educationLevel?: string;
+    learningStyle?: string;
+    subjects?: string[];
+    school?: string;
+    major?: string;
+    yearOfStudy?: string;
+    studyGoal?: string;
+    preferredLanguage?: string;
+  } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isStoppedRef = useRef(false);
+  const currentAssistantMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
     
-    // Handle browser refresh/close - abort ongoing request
-    const handleBeforeUnload = () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+    // Fetch user profile for personalization
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok) {
+          const data = await res.json();
+          setUserProfile(data.user);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
       }
+    };
+    fetchProfile();
+    
+    // Handle browser refresh/close - set stopped flag
+    const handleBeforeUnload = () => {
+      isStoppedRef.current = true;
     };
     
     window.addEventListener("beforeunload", handleBeforeUnload);
     
-    // Cleanup on unmount - abort any ongoing request
+    // Cleanup on unmount
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      isStoppedRef.current = true;
     };
   }, []);
 
-  // Stop generation function
+  // Stop generation function - abort request and show stopped message
   const stopGeneration = () => {
+    // Set stopped flag first
+    isStoppedRef.current = true;
+    
+    // Abort the fetch request to stop server response
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    
+    // Immediately update the message with stopped indicator
+    if (currentAssistantMessageIdRef.current && activeThreadId) {
+      updateMessage(activeThreadId, currentAssistantMessageIdRef.current, "[[STOPPED]]");
+    }
+    
+    // Clear states
     setIsLoading(false);
     setStreamingContent("");
     setStreamingMessageId(null);
+    currentAssistantMessageIdRef.current = null;
   };
 
   useEffect(() => {
@@ -322,6 +363,15 @@ export default function TutorPage() {
   const sendMessage = async (content: string) => {
     if ((!content.trim() && uploadedFiles.length === 0) || isLoading) return;
 
+    // Cancel any existing request before starting new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Reset stopped flag for new message
+    isStoppedRef.current = false;
+
     let threadId = activeThreadId;
     if (!threadId) threadId = createThread();
 
@@ -342,6 +392,7 @@ export default function TutorPage() {
 
     const assistantMessageId = addMessage(threadId, { role: "assistant", content: "" });
     setStreamingMessageId(assistantMessageId);
+    currentAssistantMessageIdRef.current = assistantMessageId;
 
     // Create new AbortController for this request
     abortControllerRef.current = new AbortController();
@@ -366,19 +417,37 @@ export default function TutorPage() {
         messageContent = `${fileDescriptions.join('\n')}\n\n${messageContent}`;
       }
 
+      // Get previous messages for context (exclude the current empty assistant message)
+      const previousMessages = messages
+        .filter(m => m.content && m.content !== "[[STOPPED]]")
+        .map(m => ({ role: m.role, content: m.content }));
+
       const response = await fetch("/api/ai/thesys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: { role: "user", content: messageContent, id: userMessageId },
+          prompt: { role: "user", content: messageContent },
           threadId,
           responseId: assistantMessageId,
           model: selectedModel,
+          userProfile: usePersonalization ? userProfile : null,
+          chatHistory: previousMessages,
         }),
-        signal, // Pass abort signal to fetch
+        signal,
       });
 
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${data.creditsNeeded} credits but have ${data.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          return;
+        }
+        throw new Error("Failed");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -390,43 +459,51 @@ export default function TutorPage() {
             const { done, value } = await reader.read();
             if (done) break;
             
-            // Check if aborted
-            if (signal.aborted) {
-              reader.cancel();
-              break;
+            // Check if stopped by user or message ID changed (new request started)
+            if (isStoppedRef.current || currentAssistantMessageIdRef.current !== assistantMessageId) {
+              reader.cancel().catch(() => {});
+              return; // Exit immediately
             }
             
             fullContent += decoder.decode(value);
             setStreamingContent(fullContent);
           }
         } catch (e) {
-          // Handle abort during read
-          if (e instanceof Error && e.name === "AbortError") {
-            reader.cancel();
-          } else {
-            throw e;
+          // Handle errors during read - if stopped, just return
+          if (isStoppedRef.current) {
+            return;
           }
+          // Ignore abort errors
+          if (e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"))) {
+            return;
+          }
+            throw e;
         }
       }
       
-      // Only update if not aborted and has content
-      if (!signal.aborted && fullContent) {
+      // Only update if not stopped, has content, and message ID still matches
+      if (!isStoppedRef.current && fullContent && currentAssistantMessageIdRef.current === assistantMessageId) {
         updateMessage(threadId, assistantMessageId, fullContent);
-      } else if (signal.aborted) {
-        // Update with partial content if aborted
-        updateMessage(threadId, assistantMessageId, fullContent || "Generation stopped.");
       }
     } catch (e) {
+      // If stopped, don't show error
+      if (isStoppedRef.current) {
+        return;
+      }
       // Handle abort errors gracefully
-      if (e instanceof Error && e.name === "AbortError") {
-        // Request was aborted - this is expected on stop/refresh
+      if (e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"))) {
         return;
       }
       updateMessage(threadId, assistantMessageId, "Something went wrong. Please try again.");
     } finally {
+      // Only clean up if not already cleaned up by stopGeneration
+      if (!isStoppedRef.current) {
       setIsLoading(false);
       setStreamingContent("");
       setStreamingMessageId(null);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: 3 } }));
+      }
+      currentAssistantMessageIdRef.current = null;
       abortControllerRef.current = null;
     }
   };
@@ -634,9 +711,32 @@ export default function TutorPage() {
         {/* Premium Input Area */}
         <div className="shrink-0 pb-6 px-4">
           <div className="max-w-3xl mx-auto">
-            {/* Model Selector */}
-            <div className="flex items-center justify-center mb-3">
+            {/* Model Selector & Personalization Toggle */}
+            <div className="flex items-center justify-center gap-4 mb-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+              
+              {/* Personalization Toggle */}
+              <button
+                onClick={() => setUsePersonalization(!usePersonalization)}
+                className={`
+                  flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
+                  transition-all duration-300 border
+                  ${usePersonalization 
+                    ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' 
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'}
+                `}
+                title={usePersonalization ? "AI uses your profile for personalized answers" : "AI gives general answers"}
+              >
+                <User className={`w-4 h-4 ${usePersonalization ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="hidden sm:inline">
+                  {usePersonalization ? 'Personalized' : 'General'}
+                </span>
+                {usePersonalization ? (
+                  <ToggleRight className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ToggleLeft className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
             </div>
 
             {uploadedFiles.length > 0 && (
@@ -789,6 +889,12 @@ function ChatMessageItem({ message, isStreaming, streamingContent, index }: Chat
 
           {isUser ? (
             <p className="text-gray-700 text-[15px] leading-relaxed whitespace-pre-wrap">{content}</p>
+          ) : content === "[[STOPPED]]" ? (
+            // Stopped message - show in red
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+              <CircleStop className="w-5 h-5 text-red-500" />
+              <span className="text-red-600 font-medium text-sm">AI response stopped</span>
+            </div>
           ) : content ? (
             <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-li:my-0.5 prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-normal prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-xl text-gray-700 text-[15px] leading-relaxed">
               <C1Component c1Response={content} isStreaming={isStreaming || false} />

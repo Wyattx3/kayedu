@@ -3,7 +3,7 @@ import OpenAI from "openai";
 
 // Use Grok API for fast news generation
 const grokClient = new OpenAI({
-  apiKey: process.env.GROK_API_KEY,
+  apiKey: process.env.GROK_API_KEY?.trim(),
   baseURL: "https://api.x.ai/v1",
 });
 

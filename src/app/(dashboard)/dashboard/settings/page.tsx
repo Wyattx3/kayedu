@@ -72,28 +72,35 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Load saved settings from localStorage
-    const savedSettings = localStorage.getItem("kay-user-settings");
-    if (savedSettings) {
+    // Load from database only
+    const loadSettings = async () => {
       try {
-        const settings = JSON.parse(savedSettings);
-        if (settings.profileImage) setProfileImage(settings.profileImage);
-        if (settings.name) setName(settings.name);
-        if (settings.dateOfBirth) setDateOfBirth(settings.dateOfBirth);
-        if (settings.schoolName) setSchoolName(settings.schoolName);
-        if (settings.major) setMajor(settings.major);
-        if (settings.yearOfStudy) setYearOfStudy(settings.yearOfStudy);
-        if (settings.occupation) setOccupation(settings.occupation);
-        if (settings.educationLevel) setEducationLevel(settings.educationLevel);
-        if (settings.learningStyle) setLearningStyle(settings.learningStyle);
-        if (settings.subjects?.length) setSelectedSubjects(settings.subjects);
-        if (settings.preferredLanguage) setPreferredLanguage(settings.preferredLanguage);
-        if (settings.studyGoal) setStudyGoal(settings.studyGoal);
-        if (settings.hobbies) setHobbies(settings.hobbies);
+        const res = await fetch("/api/user/profile");
+        if (res.ok) {
+          const data = await res.json();
+          const user = data.user;
+          if (user) {
+            if (user.image) setProfileImage(user.image);
+            if (user.name) setName(user.name);
+            if (user.dateOfBirth) setDateOfBirth(user.dateOfBirth);
+            if (user.school) setSchoolName(user.school);
+            if (user.major) setMajor(user.major);
+            if (user.yearOfStudy) setYearOfStudy(user.yearOfStudy);
+            if (user.occupation) setOccupation(user.occupation);
+            if (user.educationLevel) setEducationLevel(user.educationLevel);
+            if (user.learningStyle) setLearningStyle(user.learningStyle);
+            if (user.subjects?.length) setSelectedSubjects(user.subjects);
+            if (user.preferredLanguage) setPreferredLanguage(user.preferredLanguage);
+            if (user.studyGoal) setStudyGoal(user.studyGoal);
+            if (user.hobbies) setHobbies(user.hobbies);
+          }
+        }
       } catch (e) {
-        console.error("Failed to load settings:", e);
+        console.error("Failed to load from database:", e);
       }
-    }
+    };
+
+    loadSettings();
   }, []);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +129,7 @@ export default function SettingsPage() {
       name,
       profileImage,
       dateOfBirth,
+      school: schoolName, // Use 'school' for consistency with onboarding
       schoolName,
       major,
       yearOfStudy,
@@ -135,22 +143,32 @@ export default function SettingsPage() {
     };
     
     try {
-      // Save to localStorage for quick access by other pages
-      localStorage.setItem("kay-user-settings", JSON.stringify(settingsData));
-      
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settingsData),
       });
       if (res.ok) {
+        // Trigger session update to refetch from database
         await update();
+        // Dispatch event to notify sidebar to refetch profile
+        window.dispatchEvent(new CustomEvent("profile-updated"));
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
         toast({ title: "Profile saved successfully" });
+      } else {
+        const error = await res.json();
+        console.error("Save error response:", error);
+        throw new Error(error.error || "Failed to save");
       }
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Save error:", error);
+      const errorMessage = error?.message || error?.error || "Failed to save";
+      toast({ 
+        title: errorMessage, 
+        description: error?.details ? JSON.stringify(error.details) : undefined,
+        variant: "destructive" 
+      });
     } finally {
       setIsSaving(false);
     }
@@ -444,8 +462,8 @@ export default function SettingsPage() {
                   className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none"
                 />
                 <p className="text-xs text-gray-400 mt-2">AI will tailor responses to help you achieve your goals</p>
-              </div>
-            </div>
+          </div>
+        </div>
 
         {/* Save Button */}
         <Button

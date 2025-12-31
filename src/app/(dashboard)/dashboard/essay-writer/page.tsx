@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { FileText, Loader2, Copy, Download, ArrowRight, Check, Sparkles, Clock, BookOpen, PenLine, Paperclip, X, Image, File, Shield, Wand2 } from "lucide-react";
+import { ModelSelector, type ModelType, type UploadedFile, useAILanguage } from "@/components/ai";
+import { FileText, Loader2, Copy, Download, ArrowRight, Check, Sparkles, Clock, BookOpen, PenLine, Paperclip, X, Image, File, Shield, Wand2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState, useTaskHistory } from "@/hooks/use-persisted-state";
+import { HistoryPanel } from "@/components/ui/history-panel";
 import ReactMarkdown from "react-markdown";
+import { KayLoading } from "@/components/ui/kay-loading";
+import { CreditsDialog, useCreditsDialog } from "@/components/ui/credits-dialog";
+import { EzoicRewardedAd } from "@/components/ads/ezoic-rewarded-ad";
+import { PreGenerationAd } from "@/components/ads/pre-generation-ad";
 
 const quickTopics = [
   "Climate change impact on ecosystems",
@@ -19,23 +25,56 @@ const quickTopics = [
 ];
 
 export default function EssayWriterPage() {
-  const [topic, setTopic] = useState("");
-  const [wordCount, setWordCount] = useState([1000]);
-  const [academicLevel, setAcademicLevel] = useState("igcse");
-  const [essayType, setEssayType] = useState("expository");
-  const [citationStyle, setCitationStyle] = useState("none");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  // Persisted state - survives page navigation
+  const [topic, setTopic, clearTopic] = usePersistedState("essay-topic", "");
+  const [wordCount, setWordCount] = usePersistedState("essay-wordcount", [1000]);
+  const [academicLevel, setAcademicLevel] = usePersistedState("essay-level", "igcse");
+  const [essayType, setEssayType] = usePersistedState("essay-type", "expository");
+  const [citationStyle, setCitationStyle] = usePersistedState("essay-citation", "none");
+  const [selectedModel, setSelectedModel] = usePersistedState<ModelType>("essay-model", "fast");
+  const [result, setResult, clearResult] = usePersistedState("essay-result", "");
+  const [autoHumanize, setAutoHumanize] = usePersistedState("essay-autohumanize", true);
+  
+  // Non-persisted state
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isHumanizing, setIsHumanizing] = useState(false);
-  const [autoHumanize, setAutoHumanize] = useState(true);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const aiLanguage = useAILanguage();
+  const { saveToHistory } = useTaskHistory();
+  
+  // Credits and Ads state
+  const { isOpen: showCreditsDialog, dialogData, showDialog, hideDialog } = useCreditsDialog();
+  const [showRewardedAd, setShowRewardedAd] = useState(false);
+  const [showPreAd, setShowPreAd] = useState(false);
+  const [userPlan, setUserPlan] = useState<"free" | "pro" | "unlimited">("free");
 
   useEffect(() => setMounted(true), []);
+  
+  // Fetch user plan
+  useEffect(() => {
+    async function fetchPlan() {
+      try {
+        const res = await fetch("/api/user/credits");
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlan(data.plan || "free");
+        }
+      } catch {
+        // Default to free
+      }
+    }
+    fetchPlan();
+  }, []);
+  
+  // Handle history item selection
+  const handleHistorySelect = (item: { input: string; output: string }) => {
+    setTopic(item.input);
+    setResult(item.output);
+  };
 
   const getFileType = (file: File): "image" | "pdf" | "text" | null => {
     if (file.type.startsWith("image/")) return "image";
@@ -115,21 +154,29 @@ export default function EssayWriterPage() {
     }
   };
 
-  const handleGenerate = async () => {
-    if (!topic.trim() && uploadedFiles.length === 0) {
-      toast({ title: "Enter a topic or attach files", variant: "destructive" });
-      return;
-    }
+  // Actual generation logic
+  const performGeneration = useCallback(async () => {
     setIsLoading(true);
     setResult("");
 
-    // Build file context
+    // Build file context and extract images
     let fileContext = "";
+    const imageFiles: { data: string; mimeType: string }[] = [];
+    
     for (const file of uploadedFiles) {
       if (file.type === "text" && file.content) {
         fileContext += `[File: ${file.name}]\n${file.content.slice(0, 2000)}${file.content.length > 2000 ? '...(truncated)' : ''}\n\n`;
-      } else {
-        fileContext += `[Attached: ${file.name}]\n`;
+      } else if (file.type === "image" && file.dataUrl) {
+        const mimeMatch = file.dataUrl.match(/^data:([^;]+);base64,/);
+        if (mimeMatch) {
+          imageFiles.push({
+            data: file.dataUrl,
+            mimeType: mimeMatch[1],
+          });
+          fileContext += `[Image attached: ${file.name} - I can see this image]\n`;
+        }
+      } else if (file.type === "pdf") {
+        fileContext += `[PDF attached: ${file.name} - Please note I cannot read PDF content directly]\n`;
       }
     }
 
@@ -138,11 +185,22 @@ export default function EssayWriterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          topic: fileContext ? `${fileContext}\n${topic}` : topic, 
-          wordCount: wordCount[0], academicLevel, essayType, citationStyle, model: selectedModel 
+          topic: fileContext ? `${fileContext}\n${topic}${imageFiles.length > 0 ? '\n\nPlease analyze the attached image(s) and write an essay based on what you see.' : ''}` : topic, 
+          wordCount: wordCount[0], academicLevel, essayType, citationStyle, 
+          model: imageFiles.length > 0 ? "pro-smart" : selectedModel,
+          language: aiLanguage,
+          images: imageFiles.length > 0 ? imageFiles : undefined,
         }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          // Show credits dialog instead of just a toast
+          showDialog(data.creditsNeeded, data.creditsRemaining);
+          return;
+        }
+        throw new Error("Failed");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -161,14 +219,74 @@ export default function EssayWriterPage() {
       // Auto-humanize if enabled
       if (autoHumanize && essayText.length > 100) {
         setIsLoading(false);
-        await humanizeText(essayText);
+        const humanizedText = await humanizeText(essayText);
+        // Save to history after humanization
+        if (humanizedText) {
+          saveToHistory({
+            pageType: "essay",
+            pageName: "Essay Writer",
+            input: topic,
+            output: humanizedText.slice(0, 500),
+            metadata: { wordCount: wordCount[0], academicLevel, essayType },
+          });
+        }
+      } else if (essayText) {
+        // Save to history without humanization
+        saveToHistory({
+          pageType: "essay",
+          pageName: "Essay Writer",
+          input: topic,
+          output: essayText.slice(0, 500),
+          metadata: { wordCount: wordCount[0], academicLevel, essayType },
+        });
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setIsLoading(false);
+      // Dispatch event to update sidebar credits with estimated amount
+      const estimatedCredits = Math.max(3, Math.ceil(wordCount[0] / 1000) * 3);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: estimatedCredits } }));
+    }
+  }, [topic, wordCount, academicLevel, essayType, citationStyle, selectedModel, aiLanguage, uploadedFiles, autoHumanize, humanizeText, saveToHistory, showDialog, toast]);
+
+  const handleGenerate = async () => {
+    if (!topic.trim() && uploadedFiles.length === 0) {
+      toast({ title: "Enter a topic or attach files", variant: "destructive" });
+      return;
+    }
+    
+    // For free users, show pre-generation ad before Kabyar loading
+    if (userPlan === "free") {
+      setShowPreAd(true);
+    } else {
+      await performGeneration();
     }
   };
+  
+  // Handle pre-generation ad completion
+  const handlePreAdComplete = useCallback(() => {
+    setShowPreAd(false);
+    performGeneration();
+  }, [performGeneration]);
+  
+  // Handle watching rewarded ad for credits (when insufficient)
+  const handleWatchAd = useCallback(() => {
+    hideDialog();
+    setShowRewardedAd(true);
+  }, [hideDialog]);
+  
+  // Handle rewarded ad completion - add credits and retry generation
+  const handleAdComplete = useCallback(async (creditsEarned: number) => {
+    setShowRewardedAd(false);
+    if (creditsEarned > 0) {
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: -creditsEarned } }));
+    }
+    // Small delay to ensure database is updated before retry
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Retry generation after getting credits
+    performGeneration();
+  }, [performGeneration]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(result);
@@ -188,6 +306,31 @@ export default function EssayWriterPage() {
 
   return (
     <div className={`h-full flex flex-col transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`}>
+      {/* Credits Dialog - shows when insufficient credits */}
+      <CreditsDialog
+        isOpen={showCreditsDialog}
+        onClose={hideDialog}
+        creditsNeeded={dialogData.creditsNeeded}
+        creditsRemaining={dialogData.creditsRemaining}
+        onWatchAd={handleWatchAd}
+      />
+      
+      {/* Rewarded Ad - shows when user chooses to watch ad for credits */}
+      <EzoicRewardedAd
+        isActive={showRewardedAd}
+        onComplete={handleAdComplete}
+        onClose={() => setShowRewardedAd(false)}
+        creditsReward={5}
+      />
+      
+      {/* Pre-Generation Ad - shows before Kabyar loading for free users */}
+      <PreGenerationAd
+        isActive={showPreAd}
+        userPlan={userPlan}
+        onComplete={handlePreAdComplete}
+        onSkip={() => setShowPreAd(false)}
+      />
+      
       {/* Header */}
       <div className="flex items-start justify-between mb-5 shrink-0">
         <div className="flex items-center gap-4">
@@ -200,14 +343,17 @@ export default function EssayWriterPage() {
           </div>
         </div>
         
-        <div className="hidden lg:flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
-            <Clock className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-xs font-medium text-blue-700">~30s</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-xs font-medium text-blue-700">Academic</span>
+        <div className="flex items-center gap-2">
+          <HistoryPanel pageType="essay" onSelectItem={handleHistorySelect} />
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">~30s</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">Academic</span>
+            </div>
           </div>
         </div>
       </div>
@@ -225,7 +371,18 @@ export default function EssayWriterPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Topic</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Topic</Label>
+                {topic && (
+                  <button
+                    onClick={() => { clearTopic(); clearResult(); setUploadedFiles([]); }}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Clear input"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <Textarea
                 placeholder="What should I write about?"
                 value={topic}
@@ -413,17 +570,7 @@ export default function EssayWriterPage() {
             ) : (
               <div className="h-full flex items-center justify-center">
                 {isLoading || isHumanizing ? (
-                  <div className="text-center">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 animate-pulse ${isHumanizing ? 'bg-green-100' : 'bg-blue-100'}`}>
-                      {isHumanizing ? <Wand2 className="w-6 h-6 text-green-600" /> : <FileText className="w-6 h-6 text-blue-600" />}
-                    </div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      {isHumanizing ? 'Humanizing to bypass detection...' : 'Crafting essay...'}
-                    </p>
-                    {isHumanizing && (
-                      <p className="text-xs text-gray-400 mt-1">Making it undetectable</p>
-                    )}
-                  </div>
+                  <KayLoading message={isHumanizing ? "Humanizing to bypass detection..." : "Crafting your essay..."} dark={false} />
                 ) : (
                   <div className="text-center">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">

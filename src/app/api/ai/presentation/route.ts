@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { stream, type AIProvider, type PresentationOptions, DEFAULT_PROVIDER } from "@/lib/ai-providers";
+import { streamWithTier, type PresentationOptions, type ModelTier } from "@/lib/ai-providers";
 import { createPresentationPrompt } from "@/lib/prompts";
 import { z } from "zod";
 
@@ -11,7 +11,7 @@ const presentationSchema = z.object({
   audience: z.enum(["students", "teachers", "business", "general"]).optional().default("students"),
   details: z.string().optional().default(""),
   provider: z.enum(["openai", "claude", "gemini", "grok"]).optional(),
-  model: z.enum(["smart", "normal", "fast"]).optional(),
+  model: z.enum(["super-smart", "pro-smart", "normal", "fast"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -46,8 +46,7 @@ export async function POST(request: Request) {
       includeNotes: true,
     };
 
-    const provider: AIProvider = parsed.data.provider || DEFAULT_PROVIDER;
-    const modelTier = parsed.data.model || "normal";
+    const modelTier = (parsed.data.model || "fast") as ModelTier;
     const systemPrompt = createPresentationPrompt(options);
 
     // Build user message with style and details
@@ -70,7 +69,7 @@ Format each slide clearly with "---" separators between slides.`;
       { role: "user" as const, content: userMessage },
     ];
 
-    const responseStream = await stream(provider, messages, modelTier);
+    const responseStream = await streamWithTier(messages, modelTier);
 
     return new Response(responseStream, {
       headers: {

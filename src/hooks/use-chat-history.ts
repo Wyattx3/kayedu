@@ -19,7 +19,7 @@ export interface ChatThread {
   updatedAt: number;
 }
 
-const STORAGE_KEY = "kay-ai-tutor-history";
+const STORAGE_KEY = "kabyar-tutor-history";
 
 export function useChatHistory() {
   const [threads, setThreads] = useState<ChatThread[]>([]);

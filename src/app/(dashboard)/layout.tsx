@@ -1,12 +1,35 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { redirect } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import { Sidebar } from "@/components/layout/sidebar";
+import { OnboardingCheck } from "@/components/auth/onboarding-check";
+import { DashboardAdPopup } from "@/components/ads/dashboard-ad-popup";
 import { Loader2 } from "lucide-react";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
+  const [userPlan, setUserPlan] = useState<"free" | "pro" | "unlimited">("free");
+
+  useEffect(() => {
+    // Fetch user plan
+    async function fetchPlan() {
+      try {
+        const res = await fetch("/api/user/credits");
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlan(data.plan || "free");
+        }
+      } catch {
+        // Default to free
+      }
+    }
+    
+    if (status === "authenticated") {
+      fetchPlan();
+    }
+  }, [status]);
 
   if (status === "loading") {
     return (
@@ -37,6 +60,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+      <OnboardingCheck />
+      {/* 3-hour interval ad popup for free users */}
+      <DashboardAdPopup userPlan={userPlan} />
     </div>
   );
 }

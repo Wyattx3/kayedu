@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { Search, Loader2, ArrowRight, Copy, Check, Lightbulb, Sparkles, Paperclip, X, Image, FileText, File } from "lucide-react";
+import { ModelSelector, type ModelType, type UploadedFile, useAILanguage } from "@/components/ai";
+import { Search, Loader2, ArrowRight, Copy, Check, Lightbulb, Sparkles, Paperclip, X, Image, FileText, File, Globe, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState, useTaskHistory } from "@/hooks/use-persisted-state";
+import { HistoryPanel } from "@/components/ui/history-panel";
 import ReactMarkdown from "react-markdown";
+import { KayLoading } from "@/components/ui/kay-loading";
 
 const suggestions = [
   "Explain quantum entanglement",
@@ -18,19 +21,29 @@ const suggestions = [
 ];
 
 export default function AnswerFinderPage() {
-  const [question, setQuestion] = useState("");
-  const [subject, setSubject] = useState("general");
-  const [detailLevel, setDetailLevel] = useState("detailed");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  // Persisted state
+  const [question, setQuestion, clearQuestion] = usePersistedState("answer-question", "");
+  const [subject, setSubject] = usePersistedState("answer-subject", "general");
+  const [detailLevel, setDetailLevel] = usePersistedState("answer-detail", "detailed");
+  const [selectedModel, setSelectedModel] = usePersistedState<ModelType>("answer-model", "fast");
+  const [result, setResult, clearResult] = usePersistedState("answer-result", "");
+  
+  // Non-persisted state
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const aiLanguage = useAILanguage();
+  const { saveToHistory } = useTaskHistory();
 
   useEffect(() => setMounted(true), []);
+  
+  const handleHistorySelect = (item: { input: string; output: string }) => {
+    setQuestion(item.input);
+    setResult(item.output);
+  };
 
   const getFileType = (file: File): "image" | "pdf" | "text" | null => {
     if (file.type.startsWith("image/")) return "image";
@@ -76,11 +89,23 @@ export default function AnswerFinderPage() {
     setResult("");
 
     let fileContext = "";
+    const imageFiles: { data: string; mimeType: string }[] = [];
+    
     for (const file of uploadedFiles) {
       if (file.type === "text" && file.content) {
         fileContext += `[File: ${file.name}]\n${file.content.slice(0, 2000)}${file.content.length > 2000 ? '...' : ''}\n\n`;
-      } else {
-        fileContext += `[Attached: ${file.name}]\n`;
+      } else if (file.type === "image" && file.dataUrl) {
+        // Extract base64 data and mime type from dataUrl
+        const mimeMatch = file.dataUrl.match(/^data:([^;]+);base64,/);
+        if (mimeMatch) {
+          imageFiles.push({
+            data: file.dataUrl,
+            mimeType: mimeMatch[1],
+          });
+          fileContext += `[Image attached: ${file.name} - I can see this image]\n`;
+        }
+      } else if (file.type === "pdf") {
+        fileContext += `[PDF attached: ${file.name} - Please note I cannot read PDF content directly]\n`;
       }
     }
 
@@ -89,26 +114,56 @@ export default function AnswerFinderPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Subject: ${subject}\nDetail Level: ${detailLevel}\n\n${fileContext}Question: ${question}`,
-          mode: "answer",
-          model: selectedModel,
+          messages: [
+            { role: "user", content: `Subject: ${subject}\nDetail Level: ${detailLevel}\n\n${fileContext}Question: ${question}${imageFiles.length > 0 ? '\n\nPlease analyze the attached image(s) and answer based on what you see.' : ''}\n\n[INSTRUCTION: Provide accurate information. If images are attached, describe and analyze them.]` }
+          ],
+          feature: "answer",
+          webSearch: imageFiles.length === 0, // Disable web search when analyzing images
+          model: imageFiles.length > 0 ? "pro-smart" : selectedModel, // Use Gemini for images
+          language: aiLanguage,
+          images: imageFiles.length > 0 ? imageFiles : undefined,
         }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${data.creditsNeeded} credits but have ${data.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          return;
+        }
+        throw new Error("Failed");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       if (reader) {
+        let fullResult = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          setResult((prev) => prev + decoder.decode(value));
+          const chunk = decoder.decode(value);
+          fullResult += chunk;
+          setResult((prev) => prev + chunk);
+        }
+        // Save to history
+        if (fullResult) {
+          saveToHistory({
+            pageType: "answer",
+            pageName: "Answer Finder",
+            input: question,
+            output: fullResult.slice(0, 500),
+            metadata: { subject, detailLevel },
+          });
         }
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setIsLoading(false);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: 3 } }));
     }
   };
 
@@ -132,9 +187,18 @@ export default function AnswerFinderPage() {
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
-          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-          <span className="text-xs font-medium text-blue-700">Instant</span>
+        <div className="flex items-center gap-2">
+          <HistoryPanel pageType="answer" onSelectItem={handleHistorySelect} />
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-full">
+              <Globe className="w-3.5 h-3.5 text-green-600" />
+              <span className="text-xs font-medium text-green-700">Web Search</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">Instant</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -143,9 +207,20 @@ export default function AnswerFinderPage() {
         {/* Input Panel */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-blue-600" />
-              <span className="font-medium text-gray-900 text-sm">Question</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-medium text-gray-900 text-sm">Question</span>
+              </div>
+              {question && (
+                <button
+                  onClick={() => { clearQuestion(); clearResult(); setUploadedFiles([]); }}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  title="Clear input"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -266,12 +341,7 @@ export default function AnswerFinderPage() {
             ) : (
               <div className="h-full flex items-center justify-center">
                 {isLoading ? (
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2 animate-pulse">
-                      <Search className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-gray-500 text-sm font-medium">Finding answer...</p>
-                  </div>
+                  <KayLoading message="Finding answer..." dark={false} />
                 ) : (
                   <div className="text-center">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">

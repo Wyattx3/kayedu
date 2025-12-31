@@ -7,40 +7,71 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { Presentation, Loader2, ArrowRight, Download, Layers, Paperclip, X, Image, FileText, File, ChevronLeft, ChevronRight } from "lucide-react";
+import { type UploadedFile, ModelSelector, type ModelType } from "@/components/ai";
+import { ProfessionalSlides, type ProfessionalSlide } from "@/components/slides/ProfessionalSlides";
+import { Presentation, Layers, Paperclip, X, Image, FileText, File, Sparkles, RefreshCw, Zap, BarChart3, Layout, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { KayLoading } from "@/components/ui/kay-loading";
 
 const styleOptions = [
-  { value: "professional", label: "Pro", bgColor: "#1e3a5f", textColor: "#ffffff", accentColor: "#3b82f6" },
-  { value: "modern", label: "Modern", bgColor: "#0f172a", textColor: "#ffffff", accentColor: "#6366f1" },
-  { value: "minimal", label: "Minimal", bgColor: "#ffffff", textColor: "#1f2937", accentColor: "#2563eb" },
-  { value: "creative", label: "Creative", bgColor: "#7c3aed", textColor: "#ffffff", accentColor: "#fbbf24" },
+  { value: "professional", label: "Professional", color: "#1e40af", desc: "Corporate & elegant" },
+  { value: "modern", label: "Modern", color: "#7c3aed", desc: "Futuristic & tech" },
+  { value: "minimal", label: "Minimal", color: "#6b7280", desc: "Clean & simple" },
+  { value: "creative", label: "Creative", color: "#dc2626", desc: "Bold & vibrant" },
 ];
-
-interface SlideData {
-  title: string;
-  bullets: string[];
-  notes?: string;
-}
 
 export default function PresentationPage() {
   const [topic, setTopic] = useState("");
-  const [slideCount, setSlideCount] = useState([10]);
-  const [style, setStyle] = useState("professional");
+  const [slideCount, setSlideCount] = useState([8]);
+  const [style, setStyle] = useState<"professional" | "modern" | "minimal" | "creative">("professional");
+  const [model, setModel] = useState<ModelType>("fast");
   const [audience, setAudience] = useState("students");
   const [details, setDetails] = useState("");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [slides, setSlides] = useState<SlideData[]>([]);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [slides, setSlides] = useState<ProfessionalSlide[]>([]);
+  const [colors, setColors] = useState<string[]>(["#1e40af", "#3b82f6"]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingPptx, setIsGeneratingPptx] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [progress, setProgress] = useState({ step: "", percent: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
 
   useEffect(() => setMounted(true), []);
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadPPTX = async () => {
+    if (slides.length === 0) return;
+    
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/ai/slides/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slides, topic, style, colors }),
+      });
+
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${topic.replace(/[^a-zA-Z0-9]/g, "_")}_presentation.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({ title: "PowerPoint downloaded!" });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({ title: "Failed to export", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const getFileType = (file: File): "image" | "pdf" | "text" | null => {
     if (file.type.startsWith("image/")) return "image";
@@ -77,63 +108,20 @@ export default function PresentationPage() {
 
   const removeFile = (id: string) => setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
 
-  // Parse AI response into slides
-  const parseSlides = (text: string): SlideData[] => {
-    const slideBlocks = text.split(/---+/).filter(block => block.trim());
-    const parsedSlides: SlideData[] = [];
-
-    for (const block of slideBlocks) {
-      const lines = block.trim().split('\n').filter(l => l.trim());
-      let title = '';
-      const bullets: string[] = [];
-      let notes = '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        // Title detection
-        if (trimmed.startsWith('# ') || trimmed.startsWith('## ') || trimmed.startsWith('**Slide')) {
-          title = trimmed.replace(/^#+\s*/, '').replace(/^\*\*Slide.*?:\s*/, '').replace(/\*\*/g, '').trim();
-        }
-        // Bullet points
-        else if (trimmed.startsWith('- ') || trimmed.startsWith('• ') || trimmed.match(/^\d+\./)) {
-          const bullet = trimmed.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
-          if (bullet && !bullet.toLowerCase().includes('speaker note') && !bullet.toLowerCase().includes('visual')) {
-            bullets.push(bullet);
-          }
-        }
-        // Notes
-        else if (trimmed.toLowerCase().includes('note:') || trimmed.toLowerCase().includes('speaker')) {
-          notes = trimmed.replace(/.*notes?:\s*/i, '').trim();
-        }
-      }
-
-      if (title || bullets.length > 0) {
-        parsedSlides.push({ title: title || `Slide ${parsedSlides.length + 1}`, bullets: bullets.slice(0, 6), notes });
-      }
-    }
-
-    // If parsing failed, create slides from text chunks
-    if (parsedSlides.length === 0) {
-      const chunks = text.split('\n\n').filter(c => c.trim());
-      for (let i = 0; i < Math.min(chunks.length, slideCount[0]); i++) {
-        parsedSlides.push({
-          title: `Slide ${i + 1}`,
-          bullets: chunks[i].split('\n').filter(l => l.trim()).slice(0, 5),
-        });
-      }
-    }
-
-    return parsedSlides;
-  };
-
   const handleGenerate = async () => {
     if (!topic.trim() && uploadedFiles.length === 0) {
       toast({ title: "Enter a topic or attach files", variant: "destructive" });
       return;
     }
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     setIsLoading(true);
     setSlides([]);
-    setCurrentSlide(0);
+    setProgress({ step: "Analyzing topic...", percent: 10 });
 
     let fileContext = "";
     for (const file of uploadedFiles) {
@@ -145,190 +133,184 @@ export default function PresentationPage() {
     }
 
     try {
-      const response = await fetch("/api/ai/presentation", {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev.percent < 30) return { step: "Generating slide content...", percent: prev.percent + 5 };
+          if (prev.percent < 60) return { step: "Creating data visualizations...", percent: prev.percent + 3 };
+          if (prev.percent < 85) return { step: "Generating images...", percent: prev.percent + 2 };
+          return { step: "Finalizing presentation...", percent: Math.min(prev.percent + 1, 95) };
+        });
+      }, 500);
+
+      const response = await fetch("/api/ai/slides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           topic: fileContext ? `${fileContext}\n${topic}` : topic, 
-          slides: slideCount[0], 
+          slideCount: slideCount[0], 
           style, 
           audience, 
           details, 
-          model: selectedModel 
+          model,
         }),
+        signal: abortControllerRef.current.signal,
       });
-      if (!response.ok) throw new Error("Failed");
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
       
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          fullText += decoder.decode(value);
+      clearInterval(progressInterval);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 402) {
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${error.creditsNeeded} credits but have ${error.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          setProgress({ step: "", percent: 0 });
+          return;
         }
+        throw new Error(error.error || "Failed to generate slides");
       }
 
-      const parsedSlides = parseSlides(fullText);
-      if (parsedSlides.length === 0) {
-        throw new Error("Failed to parse slides");
+      const data = await response.json();
+      setSlides(data.slides);
+      setColors(data.colors || ["#1e40af", "#3b82f6"]);
+      setProgress({ step: "Complete!", percent: 100 });
+      
+      toast({ 
+        title: `${data.slides.length} slides generated!`,
+        description: "Use arrow keys to navigate, F for fullscreen"
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setProgress({ step: "", percent: 0 });
+        return;
       }
-      setSlides(parsedSlides);
-    } catch {
-      toast({ title: "Something went wrong", variant: "destructive" });
+      console.error("Generation error:", error);
+      toast({ title: error instanceof Error ? error.message : "Something went wrong", variant: "destructive" });
+      setProgress({ step: "", percent: 0 });
     } finally {
       setIsLoading(false);
+      // Slides: estimate ~500 words per slide
+      const credits = Math.max(3, Math.ceil((slideCount[0] * 500) / 1000) * 3);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: credits } }));
     }
   };
 
-  const downloadPptx = async () => {
-    if (slides.length === 0) return;
-    setIsGeneratingPptx(true);
-
-    try {
-      const response = await fetch("/api/ai/presentation/generate-pptx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, slides, style }),
-      });
-
-      if (!response.ok) throw new Error("Failed to generate PPTX");
-
-      const result = await response.json();
-      
-      // Convert base64 to blob and download
-      const byteCharacters = atob(result.data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({ title: "PowerPoint downloaded!" });
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Failed to create PowerPoint", variant: "destructive" });
-    } finally {
-      setIsGeneratingPptx(false);
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+      setProgress({ step: "", percent: 0 });
     }
   };
-
-  const currentStyleConfig = styleOptions.find(s => s.value === style) || styleOptions[0];
 
   return (
     <div className={`h-full flex flex-col transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`}>
       {/* Header */}
-      <div className="flex items-start justify-between mb-5 shrink-0">
+      <div className="flex items-start justify-between mb-4 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
             <Presentation className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Presentation</h1>
-            <p className="text-sm text-gray-500">Create & download real PowerPoint slides</p>
+            <h1 className="text-lg font-bold text-gray-900">AI Presentation</h1>
+            <p className="text-sm text-gray-500">Professional slides with charts & AI images</p>
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-full">
-          <Download className="w-3.5 h-3.5 text-green-600" />
-          <span className="text-xs font-medium text-green-700">.PPTX Export</span>
-        </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 grid lg:grid-cols-[320px_1fr] gap-4 min-h-0">
         {/* Input Panel */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0">
+          <div className="px-4 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100 shrink-0">
             <div className="flex items-center gap-2">
-              <Presentation className="w-3.5 h-3.5 text-blue-600" />
-              <span className="font-medium text-gray-900 text-sm">Configure</span>
+              <Layout className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-medium text-gray-900 text-sm">Configure Slides</span>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">Topic</Label>
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Topic</Label>
               <Input
-                placeholder="e.g., Climate Change, AI Ethics"
+                placeholder="e.g., Climate Change Solutions"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="h-9 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
+                className="h-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-1.5">
+              <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Slides</Label>
-                <span className="text-base font-bold text-blue-600">{slideCount[0]}</span>
+                <span className="text-lg font-bold text-blue-600">{slideCount[0]}</span>
               </div>
-              <Slider value={slideCount} onValueChange={setSlideCount} min={5} max={20} step={1} className="[&_[role=slider]]:bg-blue-600" />
+              <Slider value={slideCount} onValueChange={setSlideCount} min={4} max={15} step={1} className="[&_[role=slider]]:bg-blue-600" />
+              <p className="text-xs text-gray-400 mt-1">Includes title, content, charts, and closing slides</p>
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Style</Label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">Style</Label>
+              <div className="grid grid-cols-2 gap-2">
                 {styleOptions.map((s) => (
                   <button
                     key={s.value}
-                    onClick={() => setStyle(s.value)}
-                    className={`py-2 rounded-lg border text-center transition-all text-xs font-medium relative overflow-hidden ${
+                    onClick={() => setStyle(s.value as any)}
+                    className={`py-3 px-3 rounded-xl border text-left transition-all ${
                       style === s.value
-                        ? "border-blue-500 ring-2 ring-blue-500/20"
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
                         : "border-gray-200 hover:border-blue-200"
                     }`}
                   >
-                    <div className="w-full h-2 mb-1" style={{ backgroundColor: s.bgColor }} />
-                    <span className="text-gray-700">{s.label}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: s.color }} />
+                      <span className={`text-sm font-medium ${style === s.value ? "text-blue-700" : "text-gray-700"}`}>
+                    {s.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{s.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">Audience</Label>
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">AI Model</Label>
+              <ModelSelector value={model} onChange={setModel} />
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Audience</Label>
               <Select value={audience} onValueChange={setAudience}>
-                <SelectTrigger className="h-8 text-sm border-gray-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm border-gray-200"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="students">Students</SelectItem>
-                  <SelectItem value="teachers">Teachers</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="teachers">Teachers / Educators</SelectItem>
+                  <SelectItem value="business">Business / Corporate</SelectItem>
+                  <SelectItem value="investors">Investors / Pitch</SelectItem>
+                  <SelectItem value="general">General Audience</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">Key Points</Label>
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Additional Details</Label>
               <Textarea
-                placeholder="Main points to cover..."
+                placeholder="Key points, data to include, specific charts..."
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                rows={2}
+                rows={3}
                 className="resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 text-sm"
               />
             </div>
 
-            <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">AI Model</Label>
-              <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-            </div>
-
             {/* File Upload */}
             <div>
-              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Attachments</Label>
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Reference Files</Label>
               {uploadedFiles.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {uploadedFiles.map((file) => (
@@ -347,156 +329,129 @@ export default function PresentationPage() {
             </div>
           </div>
 
-          <div className="p-3 border-t border-gray-100 shrink-0">
-            <Button
-              onClick={handleGenerate}
-              disabled={isLoading || (!topic.trim() && uploadedFiles.length === 0)}
-              className="w-full h-10 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium shadow-lg shadow-blue-500/20 transition-all hover:shadow-xl hover:-translate-y-0.5"
-            >
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating Slides...</>
-              ) : (
-                <>Generate Slides<ArrowRight className="ml-2 h-4 w-4" /></>
-              )}
-            </Button>
+          <div className="p-3 border-t border-gray-100 shrink-0 space-y-2">
+            {isLoading ? (
+              <>
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>{progress.step}</span>
+                    <span>{progress.percent}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                </div>
+              <Button
+                onClick={handleStop}
+                variant="outline"
+                className="w-full h-10 border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <X className="mr-2 h-4 w-4" />Stop Generation
+              </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleGenerate}
+                disabled={!topic.trim() && uploadedFiles.length === 0}
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl font-medium shadow-lg shadow-blue-500/20 transition-all hover:shadow-xl hover:-translate-y-0.5"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />Generate Presentation
+              </Button>
+            )}
+            
+            {slides.length > 0 && !isLoading && (
+              <div className="flex gap-2">
+              <Button
+                onClick={handleGenerate}
+                variant="outline"
+                  className="flex-1 h-9 text-sm"
+              >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Regenerate
+                </Button>
+                <Button
+                  onClick={handleDownloadPPTX}
+                  disabled={isExporting}
+                  className="flex-1 h-9 text-sm bg-green-600 hover:bg-green-700"
+                >
+                  {isExporting ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  .pptx
+              </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Slide Preview Panel */}
-        <div className="bg-gray-900 rounded-xl overflow-hidden flex flex-col">
-          {/* Preview Header */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 shrink-0">
+        {/* Preview Panel */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 border-b border-gray-700 shrink-0">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-300">
-                {slides.length > 0 ? `Slide ${currentSlide + 1} of ${slides.length}` : 'Preview'}
-              </span>
+              <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+              <span className="ml-2 text-sm font-medium text-gray-300">Presentation Preview</span>
             </div>
             {slides.length > 0 && (
-              <Button
-                onClick={downloadPptx}
-                disabled={isGeneratingPptx}
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white h-8"
-              >
-                {isGeneratingPptx ? (
-                  <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Exporting...</>
-                ) : (
-                  <><Download className="mr-1.5 h-3.5 w-3.5" />Download .PPTX</>
-                )}
-              </Button>
-            )}
-          </div>
-
-          {/* Slide Display */}
-          <div className="flex-1 flex items-center justify-center p-6">
-            {slides.length > 0 ? (
-              <div 
-                className="w-full max-w-3xl aspect-[16/9] rounded-lg shadow-2xl overflow-hidden relative"
-                style={{ backgroundColor: currentStyleConfig.bgColor }}
-              >
-                {/* Slide Content */}
-                <div className="absolute inset-0 p-8 flex flex-col">
-                  {/* Title */}
-                  <h2 
-                    className="text-2xl md:text-3xl font-bold mb-2"
-                    style={{ color: currentStyleConfig.textColor }}
-                  >
-                    {slides[currentSlide]?.title}
-                  </h2>
-                  
-                  {/* Accent line */}
-                  <div 
-                    className="w-20 h-1 rounded mb-6"
-                    style={{ backgroundColor: currentStyleConfig.accentColor }}
-                  />
-                  
-                  {/* Bullets */}
-                  <ul className="space-y-3 flex-1">
-                    {slides[currentSlide]?.bullets.map((bullet, i) => (
-                      <li 
-                        key={i} 
-                        className="flex items-start gap-3 text-sm md:text-base"
-                        style={{ color: currentStyleConfig.textColor }}
-                      >
-                        <span 
-                          className="w-2 h-2 rounded-full mt-2 shrink-0"
-                          style={{ backgroundColor: currentStyleConfig.accentColor }}
-                        />
-                        {bullet}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Slide number */}
-                  <div 
-                    className="absolute bottom-4 right-6 text-sm opacity-50"
-                    style={{ color: currentStyleConfig.textColor }}
-                  >
-                    {currentSlide + 1} / {slides.length}
-                  </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{slides.length} slides</span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/20 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <span className="text-xs font-medium text-green-400">Ready</span>
                 </div>
               </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {slides.length > 0 ? (
+              <ProfessionalSlides slides={slides} colors={colors} style={style} />
             ) : (
-              <div className="text-center">
+              <div className="h-full flex items-center justify-center p-8">
                 {isLoading ? (
-                  <div>
-                    <div className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center mx-auto mb-3 animate-pulse">
-                      <Presentation className="w-8 h-8 text-blue-500" />
-                    </div>
-                    <p className="text-gray-400 text-sm font-medium">Generating slides...</p>
-                    <p className="text-gray-500 text-xs mt-1">This may take a moment</p>
-                  </div>
+                  <KayLoading message={progress.step || "Generating your presentation..."} />
                 ) : (
-                  <div>
-                    <div className="w-20 h-20 rounded-xl bg-gray-800 flex items-center justify-center mx-auto mb-3">
-                      <Presentation className="w-10 h-10 text-gray-600" />
+                  <div className="text-center max-w-lg">
+                    <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-gray-800 to-gray-700 flex items-center justify-center mx-auto mb-6 border border-gray-600">
+                      <Presentation className="w-14 h-14 text-gray-500" />
                     </div>
-                    <p className="text-gray-400 text-sm">Your slides will appear here</p>
-                    <p className="text-gray-500 text-xs mt-1">Enter a topic and click Generate</p>
+                    <h3 className="text-xl font-semibold text-white mb-3">Create Professional Presentations</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed mb-8">
+                      Enter a topic and let AI generate stunning slides with charts, images, and animations.
+                    </p>
+                    
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="p-4 rounded-xl bg-gray-800 border border-gray-700">
+                        <Zap className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-400">AI Content</p>
+                        <p className="text-[10px] text-gray-500">Smart</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-gray-800 border border-gray-700">
+                        <Sparkles className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-400">AI Images</p>
+                        <p className="text-[10px] text-gray-500">Generated</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-gray-800 border border-gray-700">
+                        <BarChart3 className="w-6 h-6 text-green-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-400">Charts</p>
+                        <p className="text-[10px] text-gray-500">Dynamic</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-gray-800 border border-gray-700">
+                        <Layout className="w-6 h-6 text-amber-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-400">Layouts</p>
+                        <p className="text-[10px] text-gray-500">Professional</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
-
-          {/* Navigation */}
-          {slides.length > 0 && (
-            <div className="px-4 py-3 bg-gray-800 flex items-center justify-center gap-4 shrink-0">
-              <button
-                onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
-                disabled={currentSlide === 0}
-                className="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-white transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              
-              {/* Slide thumbnails */}
-              <div className="flex gap-2 overflow-x-auto max-w-md">
-                {slides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`w-8 h-8 rounded flex items-center justify-center text-xs font-medium transition-all ${
-                      i === currentSlide 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setCurrentSlide(Math.min(slides.length - 1, currentSlide + 1))}
-                disabled={currentSlide === slides.length - 1}
-                className="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-white transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

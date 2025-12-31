@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { ShieldCheck, Loader2, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, Scan, Info, Paperclip, X, Image, FileText, File } from "lucide-react";
+import { ModelSelector, type ModelType, type UploadedFile, useAILanguage } from "@/components/ai";
+import { ShieldCheck, Loader2, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, Scan, Info, Paperclip, X, Image, FileText, File, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { KayLoading } from "@/components/ui/kay-loading";
 
 interface DetectionIndicator {
   text: string;
@@ -25,13 +26,14 @@ interface DetectionResult {
 
 export default function AIDetectorPage() {
   const [text, setText] = useState("");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  const [selectedModel, setSelectedModel] = useState<ModelType>("fast");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const aiLanguage = useAILanguage();
 
   useEffect(() => setMounted(true), []);
 
@@ -135,14 +137,28 @@ export default function AIDetectorPage() {
       const response = await fetch("/api/ai/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, model: selectedModel }),
+        body: JSON.stringify({ text, model: selectedModel, language: aiLanguage }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${data.creditsNeeded} credits but have ${data.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          return;
+        }
+        throw new Error("Failed");
+      }
       setResult(await response.json());
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setIsLoading(false);
+      const words = text.split(/\s+/).length;
+      const credits = Math.max(3, Math.ceil(words / 1000) * 3);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: credits } }));
     }
   };
 
@@ -176,7 +192,18 @@ export default function AIDetectorPage() {
                 <Scan className="w-3.5 h-3.5 text-blue-600" />
                 <span className="font-medium text-gray-900 text-sm">Input Text</span>
               </div>
-              <span className="text-xs text-gray-400">{text.length} chars</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{text.length} chars</span>
+                {text && (
+                  <button
+                    onClick={() => { setText(""); setUploadedFiles([]); setResult(null); }}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Clear input"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -339,12 +366,7 @@ export default function AIDetectorPage() {
             ) : (
               <div className="h-full flex items-center justify-center">
                 {isLoading ? (
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2 animate-pulse">
-                      <Scan className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-gray-500 text-sm font-medium">Scanning...</p>
-                  </div>
+                  <KayLoading message="Analyzing content..." dark={false} />
                 ) : (
                   <div className="text-center">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">

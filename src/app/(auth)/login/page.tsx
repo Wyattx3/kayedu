@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +51,20 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: "/dashboard" });
+  const handleGoogleSignIn = async () => {
+    try {
+      await signIn("google", { 
+        callbackUrl: "/dashboard",
+        redirect: true,
+      });
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast({
+        title: "Sign-in Error",
+        description: "Failed to sign in with Google. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -61,10 +74,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-10">
-            <div className="flex items-center justify-center w-8 h-8 rounded bg-blue-500">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl text-gray-900">Kay AI</span>
+            <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" priority />
+            <span className="font-bold text-xl text-gray-900">Kabyar</span>
           </div>
 
           <h1 className="text-2xl font-semibold text-gray-900 mb-8">Log in to your account</h1>

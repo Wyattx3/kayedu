@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -196,10 +197,8 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-10">
-            <div className="flex items-center justify-center w-8 h-8 rounded bg-blue-500">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl text-gray-900">Kay AI</span>
+            <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" priority />
+            <span className="font-bold text-xl text-gray-900">Kabyar</span>
           </div>
 
           <Suspense fallback={

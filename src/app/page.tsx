@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles,
@@ -109,7 +110,7 @@ const testimonials = [
   { 
     name: "Sarah Mitchell", 
     program: "IGCSE", 
-    text: "Kay AI completely transformed how I approach my studies. My essay grades improved from C to A in just two months.",
+    text: "Kabyar completely transformed how I approach my studies. My essay grades improved from C to A in just two months.",
     avatar: "S",
     rating: 5
   },
@@ -261,10 +262,8 @@ export default function HomePage() {
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl">
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl">Kay AI</span>
+            <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" priority />
+            <span className="font-bold text-xl">Kabyar</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
@@ -645,7 +644,7 @@ export default function HomePage() {
               Real Results.<br />Real Impact.
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              See how Kay AI helps students achieve their academic goals.
+              See how Kabyar helps students achieve their academic goals.
             </p>
           </div>
 
@@ -720,7 +719,7 @@ export default function HomePage() {
               Loved by<br />Students Worldwide
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Join thousands of students who are already achieving more with Kay AI.
+              Join thousands of students who are already achieving more with Kabyar.
             </p>
           </div>
 
@@ -759,7 +758,7 @@ export default function HomePage() {
               <BarChart3 className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Why Kay AI?
+              Why Kabyar?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               See how we compare to other AI writing tools.
@@ -769,7 +768,7 @@ export default function HomePage() {
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
             <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 font-bold">
               <div className="text-gray-500">Feature</div>
-              <div className="text-center text-blue-600">Kay AI</div>
+              <div className="text-center text-blue-600">Kabyar</div>
               <div className="text-center text-gray-400">Others</div>
             </div>
             {comparisons.map((c, i) => (
@@ -820,7 +819,7 @@ export default function HomePage() {
                 Ready to Transform<br />Your Studies?
               </h2>
               <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-                Join 10,000+ students already using Kay AI to achieve their academic goals. 
+                Join 10,000+ students already using Kabyar to achieve their academic goals. 
                 Start free today - no credit card required.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -843,11 +842,9 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" />
               <div>
-                <span className="font-bold text-lg text-gray-900">Kay AI</span>
+                <span className="font-bold text-lg text-gray-900">Kabyar</span>
                 <p className="text-sm text-gray-500">Study smarter, not harder.</p>
               </div>
             </div>
@@ -856,7 +853,7 @@ export default function HomePage() {
               <a href="#" className="hover:text-gray-900 transition">Terms</a>
               <a href="#" className="hover:text-gray-900 transition">Contact</a>
             </div>
-            <p className="text-sm text-gray-500">&copy; 2025 Kay AI. All rights reserved.</p>
+            <p className="text-sm text-gray-500">&copy; 2025 Kabyar. All rights reserved.</p>
           </div>
         </div>
       </footer>

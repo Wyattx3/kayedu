@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ModelSelector, type ModelType, type UploadedFile } from "@/components/ai";
-import { BookOpen, Loader2, ArrowRight, Copy, Check, Calculator, Lightbulb, Paperclip, X, Image, FileText, File } from "lucide-react";
+import { ModelSelector, type ModelType, type UploadedFile, useAILanguage } from "@/components/ai";
+import { BookOpen, Loader2, ArrowRight, Copy, Check, Calculator, Lightbulb, Paperclip, X, Image, FileText, File, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState, useTaskHistory } from "@/hooks/use-persisted-state";
+import { HistoryPanel } from "@/components/ui/history-panel";
 import ReactMarkdown from "react-markdown";
+import { KayLoading } from "@/components/ui/kay-loading";
 
 const helpTypes = [
   { value: "solve", label: "Solve" },
@@ -18,20 +21,30 @@ const helpTypes = [
 ];
 
 export default function HomeworkHelperPage() {
-  const [problem, setProblem] = useState("");
-  const [subject, setSubject] = useState("general");
-  const [level, setLevel] = useState("igcse");
-  const [helpType, setHelpType] = useState("solve");
-  const [selectedModel, setSelectedModel] = useState<ModelType>("normal");
+  // Persisted state
+  const [problem, setProblem, clearProblem] = usePersistedState("homework-problem", "");
+  const [subject, setSubject] = usePersistedState("homework-subject", "general");
+  const [level, setLevel] = usePersistedState("homework-level", "igcse");
+  const [helpType, setHelpType] = usePersistedState("homework-helptype", "solve");
+  const [selectedModel, setSelectedModel] = usePersistedState<ModelType>("homework-model", "fast");
+  const [result, setResult, clearResult] = usePersistedState("homework-result", "");
+  
+  // Non-persisted state
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const aiLanguage = useAILanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { saveToHistory } = useTaskHistory();
 
   useEffect(() => setMounted(true), []);
+  
+  const handleHistorySelect = (item: { input: string; output: string }) => {
+    setProblem(item.input);
+    setResult(item.output);
+  };
 
   const getFileType = (file: File): "image" | "pdf" | "text" | null => {
     if (file.type.startsWith("image/")) return "image";
@@ -77,11 +90,22 @@ export default function HomeworkHelperPage() {
     setResult("");
 
     let fileContext = "";
+    const imageFiles: { data: string; mimeType: string }[] = [];
+    
     for (const file of uploadedFiles) {
       if (file.type === "text" && file.content) {
         fileContext += `[File: ${file.name}]\n${file.content.slice(0, 2000)}${file.content.length > 2000 ? '...' : ''}\n\n`;
-      } else {
-        fileContext += `[Attached: ${file.name}]\n`;
+      } else if (file.type === "image" && file.dataUrl) {
+        const mimeMatch = file.dataUrl.match(/^data:([^;]+);base64,/);
+        if (mimeMatch) {
+          imageFiles.push({
+            data: file.dataUrl,
+            mimeType: mimeMatch[1],
+          });
+          fileContext += `[Image attached: ${file.name} - I can see this image]\n`;
+        }
+      } else if (file.type === "pdf") {
+        fileContext += `[PDF attached: ${file.name} - Please note I cannot read PDF content directly]\n`;
       }
     }
 
@@ -90,26 +114,55 @@ export default function HomeworkHelperPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Subject: ${subject}\nLevel: ${level}\nHelp Type: ${helpType}\n\n${fileContext}Problem: ${problem}`,
-          mode: "homework",
-          model: selectedModel,
+          messages: [
+            { role: "user", content: `Subject: ${subject}\nLevel: ${level}\nHelp Type: ${helpType}\n\n${fileContext}Problem: ${problem}${imageFiles.length > 0 ? '\n\nPlease look at the attached image(s) to help with this homework problem.' : ''}` }
+          ],
+          feature: "homework",
+          model: imageFiles.length > 0 ? "pro-smart" : selectedModel,
+          language: aiLanguage,
+          images: imageFiles.length > 0 ? imageFiles : undefined,
         }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        if (response.status === 402) {
+          const data = await response.json();
+          toast({ 
+            title: "Insufficient Credits", 
+            description: `You need ${data.creditsNeeded} credits but have ${data.creditsRemaining} remaining.`,
+            variant: "destructive" 
+          });
+          return;
+        }
+        throw new Error("Failed");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       if (reader) {
+        let fullResult = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          setResult((prev) => prev + decoder.decode(value));
+          const chunk = decoder.decode(value);
+          fullResult += chunk;
+          setResult((prev) => prev + chunk);
+        }
+        // Save to history
+        if (fullResult) {
+          saveToHistory({
+            pageType: "homework",
+            pageName: "Homework Help",
+            input: problem.slice(0, 200),
+            output: fullResult.slice(0, 500),
+            metadata: { subject, level, helpType },
+          });
         }
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setIsLoading(false);
+      window.dispatchEvent(new CustomEvent("credits-updated", { detail: { amount: 3 } }));
     }
   };
 
@@ -133,9 +186,12 @@ export default function HomeworkHelperPage() {
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
-          <Calculator className="w-3.5 h-3.5 text-blue-600" />
-          <span className="text-xs font-medium text-blue-700">All subjects</span>
+        <div className="flex items-center gap-2">
+          <HistoryPanel pageType="homework" onSelectItem={handleHistorySelect} />
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+            <Calculator className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-xs font-medium text-blue-700">All subjects</span>
+          </div>
         </div>
       </div>
 
@@ -144,9 +200,20 @@ export default function HomeworkHelperPage() {
         {/* Input Panel */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-              <span className="font-medium text-gray-900 text-sm">Problem</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-medium text-gray-900 text-sm">Problem</span>
+              </div>
+              {problem && (
+                <button
+                  onClick={() => { clearProblem(); clearResult(); setUploadedFiles([]); }}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  title="Clear input"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -276,12 +343,7 @@ export default function HomeworkHelperPage() {
             ) : (
               <div className="h-full flex items-center justify-center">
                 {isLoading ? (
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2 animate-pulse">
-                      <BookOpen className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-gray-500 text-sm font-medium">Working on it...</p>
-                  </div>
+                  <KayLoading message="Working on it..." dark={false} />
                 ) : (
                   <div className="text-center">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">
