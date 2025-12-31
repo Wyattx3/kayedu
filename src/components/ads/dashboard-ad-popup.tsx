@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Crown, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { EzoicRewardedAd } from "./ezoic-rewarded-ad";
+import { RewardedAd } from "./rewarded-ad";
+import { AdsenseAd } from "./adsense-ad";
 
 const AD_POPUP_INTERVAL_HOURS = 3;
 const STORAGE_KEY = "kabyar-last-ad-popup";
@@ -88,7 +89,7 @@ export function DashboardAdPopup({ userPlan }: DashboardAdPopupProps) {
             </button>
 
             {/* Header */}
-            <div className="px-6 pt-8 pb-6 text-center border-b border-gray-100">
+            <div className="px-6 pt-8 pb-4 text-center border-b border-gray-100">
               <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
                 <Crown className="w-7 h-7 text-blue-600" />
               </div>
@@ -96,6 +97,15 @@ export function DashboardAdPopup({ userPlan }: DashboardAdPopupProps) {
               <p className="text-sm text-gray-500">
                 Get more credits and remove ads
               </p>
+            </div>
+
+            {/* AdSense Ad in Popup */}
+            <div className="px-4 py-3 bg-gray-50">
+              <AdsenseAd 
+                slot="YOUR_AD_SLOT_ID" 
+                format="fluid"
+                style={{ minHeight: "100px" }}
+              />
             </div>
 
             {/* Options */}
@@ -144,13 +154,11 @@ export function DashboardAdPopup({ userPlan }: DashboardAdPopupProps) {
       )}
 
       {/* Rewarded Ad */}
-      <EzoicRewardedAd
+      <RewardedAd
         isActive={showRewardedAd}
         onComplete={handleAdComplete}
         onClose={() => setShowRewardedAd(false)}
         creditsReward={5}
-        headerText="Support Kabyar"
-        bodyText="Watch this ad to earn 5 free credits"
       />
     </>
   );

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Volume2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AdsenseAd } from "./adsense-ad";
 
 interface PreGenerationAdProps {
   isActive: boolean;
@@ -86,31 +87,31 @@ export function PreGenerationAd({
               Preparing...
             </span>
           ) : (
-            <span>Skip in {countdown}s</span>
+            <span>Continues in {countdown}s</span>
           )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center p-4">
         {status === "loading" ? (
           <div className="text-center">
             <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-3" />
             <p className="text-white text-sm">Loading...</p>
           </div>
         ) : (
-          <div className="text-center">
-            <div className="w-72 h-40 bg-gray-800 rounded-lg flex items-center justify-center mb-4 border border-gray-700">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center mx-auto mb-2">
-                  <Volume2 className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-gray-400 text-sm">Video Ad</p>
-              </div>
+          <div className="w-full max-w-2xl">
+            {/* AdSense Display Ad */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <AdsenseAd 
+                slot="YOUR_AD_SLOT_ID"
+                format="rectangle"
+                style={{ minHeight: "250px", width: "100%" }}
+              />
             </div>
             
-            {/* Progress */}
-            <div className="w-72 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            {/* Progress bar */}
+            <div className="mt-4 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-blue-500 transition-all duration-1000"
                 style={{ width: `${((AD_DURATION - countdown) / AD_DURATION) * 100}%` }}
@@ -122,7 +123,7 @@ export function PreGenerationAd({
 
       {/* Footer */}
       <div className="py-3 text-center">
-        <p className="text-gray-500 text-xs">Upgrade to Pro for ads-free</p>
+        <p className="text-gray-500 text-xs">Upgrade to Pro for ads-free experience</p>
       </div>
     </div>
   );

@@ -1,10 +1,1 @@
-# Ezoic Ads.txt
-# Replace YOUR_SITE_ID with your Ezoic site ID
-# Get your ads.txt content from: https://pubdash.ezoic.com/settings/adstxt
-#
-# For automatic updates, redirect this file to:
-# https://srv.adstxtmanager.com/19390/YOUR_DOMAIN.com
-#
-# Example entries (replace with actual Ezoic provided entries):
-# google.com, pub-XXXXXXXXXX, DIRECT, f08c47fec0942fa0
-# ezoic.com, XXXXX, DIRECT
+google.com, pub-4199720806695409, DIRECT, f08c47fec0942fa0

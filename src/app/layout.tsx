@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono, Great_Vibes } from "next/font/google";
-import Script from "next/script"; // Ezoic SDK
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -58,57 +58,17 @@ export default function RootLayout({
             `,
           }}
         />
+        
+        {/* Google AdSense */}
+        <Script
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4199720806695409"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </head>
       <body className={`${outfit.variable} ${jetbrainsMono.variable} ${greatVibes.variable} font-sans antialiased`}>
         {children}
         <Toaster />
-        
-        {/* Ezoic Integration - https://docs.ezoic.com/docs/ezoicads/integration/ */}
-        {/* Step 1: Privacy Scripts (must load first) */}
-        <Script
-          src="https://cmp.gatekeeperconsent.com/min.js"
-          data-cfasync="false"
-          strategy="beforeInteractive"
-        />
-        <Script
-          src="https://the.gatekeeperconsent.com/cmp.min.js"
-          data-cfasync="false"
-          strategy="beforeInteractive"
-        />
-        
-        {/* Step 2: Header Script */}
-        <Script
-          src="//www.ezojs.com/ezoic/sa.min.js"
-          strategy="afterInteractive"
-        />
-        <Script
-          id="ezoic-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.ezstandalone = window.ezstandalone || {};
-              ezstandalone.cmd = ezstandalone.cmd || [];
-            `,
-          }}
-        />
-        
-        {/* Step 3: Rewarded Ads Init - https://docs.ezoic.com/docs/ezoicadsadvanced/rewarded/ */}
-        <Script
-          id="ezoic-rewarded-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.ezstandalone = window.ezstandalone || {};
-              ezstandalone.cmd = ezstandalone.cmd || [];
-              ezstandalone.cmd.push(function() {
-                ezstandalone.initRewardedAds();
-              });
-              
-              window.ezRewardedAds = window.ezRewardedAds || {};
-              window.ezRewardedAds.cmd = window.ezRewardedAds.cmd || [];
-            `,
-          }}
-        />
       </body>
     </html>
   );
