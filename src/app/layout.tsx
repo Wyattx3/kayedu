@@ -33,6 +33,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Cookiebot Consent */}
+        <Script
+          id="Cookiebot"
+          src="https://consent.cookiebot.com/uc.js"
+          data-cbid="0e586d16-e2bd-4c97-8d76-b0cec2fc6270"
+          strategy="beforeInteractive"
+        />
+        
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-SGJZ5YFVY1"
