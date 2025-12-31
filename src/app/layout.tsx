@@ -33,6 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google AdSense Verification */}
+        <meta name="google-adsense-account" content="ca-pub-4199720806695409" />
+        
         {/* Cookiebot Consent */}
         <Script
           id="Cookiebot"
@@ -59,11 +62,11 @@ export default function RootLayout({
           }}
         />
         
-        {/* Google AdSense */}
-        <Script
+        {/* Google AdSense - Load early for verification */}
+        <script
+          async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4199720806695409"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
       </head>
       <body className={`${outfit.variable} ${jetbrainsMono.variable} ${greatVibes.variable} font-sans antialiased`}>
