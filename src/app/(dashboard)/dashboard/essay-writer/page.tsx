@@ -14,8 +14,7 @@ import { HistoryPanel } from "@/components/ui/history-panel";
 import ReactMarkdown from "react-markdown";
 import { KayLoading } from "@/components/ui/kay-loading";
 import { CreditsDialog, useCreditsDialog } from "@/components/ui/credits-dialog";
-import { EzoicRewardedAd } from "@/components/ads/ezoic-rewarded-ad";
-import { PreGenerationAd } from "@/components/ads/pre-generation-ad";
+import { RewardedAd, PreGenerationAd } from "@/components/ads";
 
 const quickTopics = [
   "Climate change impact on ecosystems",
@@ -316,7 +315,7 @@ export default function EssayWriterPage() {
       />
       
       {/* Rewarded Ad - shows when user chooses to watch ad for credits */}
-      <EzoicRewardedAd
+      <RewardedAd
         isActive={showRewardedAd}
         onComplete={handleAdComplete}
         onClose={() => setShowRewardedAd(false)}
