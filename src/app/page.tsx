@@ -43,6 +43,7 @@ import { useEffect, useState, useRef } from "react";
 const tools = [
   { 
     name: "Essay Writer", 
+    slug: "essay-writer",
     icon: FileText, 
     desc: "Generate well-structured academic essays with proper citations and formatting",
     color: "from-blue-500 to-blue-600",
@@ -50,6 +51,7 @@ const tools = [
   },
   { 
     name: "AI Detector", 
+    slug: "ai-detector",
     icon: ShieldCheck, 
     desc: "Check if your content appears AI-generated and get improvement suggestions",
     color: "from-emerald-500 to-emerald-600",
@@ -57,6 +59,7 @@ const tools = [
   },
   { 
     name: "Humanizer", 
+    slug: "humanizer",
     icon: Wand2, 
     desc: "Transform AI-generated text into natural, human-sounding content",
     color: "from-violet-500 to-violet-600",
@@ -64,6 +67,7 @@ const tools = [
   },
   { 
     name: "Answer Finder", 
+    slug: "answer-finder",
     icon: Search, 
     desc: "Get detailed answers to your questions with step-by-step explanations",
     color: "from-amber-500 to-amber-600",
@@ -71,6 +75,7 @@ const tools = [
   },
   { 
     name: "Homework Help", 
+    slug: "homework-helper",
     icon: BookOpen, 
     desc: "Get guidance and support for all your homework assignments",
     color: "from-rose-500 to-rose-600",
@@ -78,6 +83,7 @@ const tools = [
   },
   { 
     name: "Study Guide", 
+    slug: "study-guide",
     icon: GraduationCap, 
     desc: "Create comprehensive study guides tailored to your curriculum",
     color: "from-cyan-500 to-cyan-600",
@@ -85,6 +91,7 @@ const tools = [
   },
   { 
     name: "Presentations", 
+    slug: "presentation",
     icon: Presentation, 
     desc: "Generate professional presentation outlines and slide content",
     color: "from-pink-500 to-pink-600",
@@ -92,6 +99,7 @@ const tools = [
   },
   { 
     name: "AI Tutor", 
+    slug: "tutor",
     icon: MessageCircle, 
     desc: "Chat with your personal AI tutor for interactive learning sessions",
     color: "from-indigo-500 to-indigo-600",
@@ -437,9 +445,10 @@ export default function HomePage() {
                         : "bg-transparent hover:bg-white/50"
                     }`}
                     onClick={() => setActiveFeature(i)}
+                    onDoubleClick={() => window.location.href = `/tools/${tool.slug}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg transition-transform duration-500 ${activeFeature === i ? "scale-110 rotate-3" : ""}`}>
+                      <div className={`w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg transition-transform duration-500 ${activeFeature === i ? "scale-110 rotate-3" : ""}`}>
                         <IconComponent className="w-7 h-7 text-white" />
                       </div>
                       <div className="flex-1">
@@ -448,7 +457,9 @@ export default function HomePage() {
                           {tool.desc}
                         </p>
                       </div>
-                      <ArrowRight className={`w-5 h-5 text-gray-400 transition-all duration-300 ${activeFeature === i ? "translate-x-2 text-blue-500" : ""}`} />
+                      <Link href={`/tools/${tool.slug}`} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                        <ArrowRight className={`w-5 h-5 text-gray-400 transition-all duration-300 ${activeFeature === i ? "translate-x-2 text-blue-500" : ""}`} />
+                      </Link>
                     </div>
                     
                     {/* Feature tags */}
@@ -477,7 +488,7 @@ export default function HomePage() {
                     transformStyle: "preserve-3d"
                   }}
                 >
-                  <div className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${tools[activeFeature].color} flex items-center justify-center shadow-2xl mb-6 transition-all duration-500`}>
+                  <div className={`w-20 h-20 rounded-3xl bg-blue-600 flex items-center justify-center shadow-2xl mb-6 transition-all duration-500`}>
                     {(() => {
                       const Icon = tools[activeFeature].icon;
                       return <Icon className="w-10 h-10 text-white" />;
@@ -499,8 +510,10 @@ export default function HomePage() {
                       </div>
                     ))}
                   </div>
-                  <Button className={`w-full mt-6 h-12 rounded-xl bg-gradient-to-r ${tools[activeFeature].color} border-0`}>
-                    Try {tools[activeFeature].name}
+                  <Button asChild className={`w-full mt-6 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 border-0`}>
+                    <Link href={`/tools/${tools[activeFeature].slug}`}>
+                      Try {tools[activeFeature].name}
+                    </Link>
                   </Button>
                 </div>
               </div>
@@ -516,16 +529,17 @@ export default function HomePage() {
             {tools.map((tool, i) => {
               const IconComponent = tool.icon;
               return (
-                <div
+                <Link
                   key={tool.name}
-                  className="group relative bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 shadow-lg shadow-gray-100/50 hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-500 cursor-pointer overflow-hidden hover:-translate-y-2"
+                  href={`/tools/${tool.slug}`}
+                  className="group relative bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 shadow-lg shadow-gray-100/50 hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-500 cursor-pointer overflow-hidden hover:-translate-y-2 block"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
                   {/* Background gradient on hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+                  <div className={`absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
                   
                   <div className="relative z-10">
-                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+                    <div className={`w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
                       <IconComponent className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="font-bold text-xl text-gray-900 mb-3">{tool.name}</h3>
@@ -542,11 +556,11 @@ export default function HomePage() {
 
                   {/* Arrow */}
                   <div className="absolute bottom-8 right-8 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg`}>
+                    <div className={`w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg`}>
                       <ArrowRight className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
