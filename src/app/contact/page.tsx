@@ -15,7 +15,7 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain" />
+              <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" />
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</Link>

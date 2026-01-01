@@ -12,7 +12,7 @@ export default function TermsPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain" />
+            <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" />
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm" className="text-gray-600">

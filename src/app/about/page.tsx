@@ -31,7 +31,7 @@ export default function AboutPage() {
       <header className="border-b border-gray-100 sticky top-0 bg-white z-50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain" />
+            <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <Link href="/tools" className="text-gray-600 hover:text-gray-900">Tools</Link>
@@ -175,7 +175,7 @@ export default function AboutPage() {
       <footer className="bg-gray-900 text-gray-400 py-12 px-4">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center">
-            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain brightness-0 invert" />
+            <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto brightness-0 invert" />
           </div>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/about" className="hover:text-white transition-colors">About</Link>

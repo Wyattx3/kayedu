@@ -74,7 +74,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <Link href="/" className="flex items-center mb-10">
-            <Image src="/logo.png" alt="Kabyar" width={120} height={35} className="object-contain" priority />
+            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain h-7 w-auto" priority />
           </Link>
 
           <h1 className="text-2xl font-semibold text-gray-900 mb-8">Log in to your account</h1>

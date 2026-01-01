@@ -197,7 +197,7 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <Link href="/" className="flex items-center mb-10">
-            <Image src="/logo.png" alt="Kabyar" width={120} height={35} className="object-contain" priority />
+            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain h-7 w-auto" priority />
           </Link>
 
           <Suspense fallback={
