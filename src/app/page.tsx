@@ -270,7 +270,7 @@ export default function HomePage() {
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl">
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 px-6 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center h-8">
-            <Image src="/logo.png" alt="Kabyar" width={160} height={42} className="object-contain h-10 w-auto" priority />
+            <Image src="/logo.png" alt="Kabyar" width={280} height={74} className="object-contain h-16 w-auto" priority />
           </Link>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
