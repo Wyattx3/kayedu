@@ -86,7 +86,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <Link href="/" className="flex items-center mb-10">
-            <Image src="/logo.png" alt="Kabyar" width={140} height={45} className="object-contain" priority />
+            <Image src="/logo.png" alt="Kabyar" width={120} height={35} className="object-contain" priority />
           </Link>
 
           <h1 className="text-2xl font-semibold text-gray-900 mb-8">Create your account</h1>

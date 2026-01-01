@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain" />
+            <Image src="/logo.png" alt="Kabyar" width={100} height={28} className="object-contain" />
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm" className="text-gray-600">

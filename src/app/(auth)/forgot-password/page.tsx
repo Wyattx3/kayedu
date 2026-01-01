@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <Link href="/" className="flex items-center mb-10">
-            <Image src="/logo.png" alt="Kabyar" width={140} height={45} className="object-contain" priority />
+            <Image src="/logo.png" alt="Kabyar" width={120} height={35} className="object-contain" priority />
           </Link>
 
           {!isSubmitted ? (
