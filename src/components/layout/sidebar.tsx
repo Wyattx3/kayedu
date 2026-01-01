@@ -162,7 +162,7 @@ export function Sidebar() {
       >
         {/* Logo */}
         <div className="px-5 py-6 flex items-center">
-          <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto" priority />
+          <Image src="/logo.png" alt="Kabyar" width={160} height={42} className="object-contain h-10 w-auto" priority />
         </div>
 
         {/* Nav */}

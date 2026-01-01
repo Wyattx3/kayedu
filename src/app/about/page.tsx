@@ -31,7 +31,7 @@ export default function AboutPage() {
       <header className="border-b border-gray-100 sticky top-0 bg-white z-50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center h-8">
-            <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto" />
+            <Image src="/logo.png" alt="Kabyar" width={160} height={42} className="object-contain h-10 w-auto" />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <Link href="/tools" className="text-gray-600 hover:text-gray-900">Tools</Link>
