@@ -196,10 +196,9 @@ export default function ResetPasswordPage() {
       <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 bg-white">
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
-          <div className="flex items-center gap-2 mb-10">
-            <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" priority />
-            <span className="font-bold text-xl text-gray-900">Kabyar</span>
-          </div>
+          <Link href="/" className="flex items-center mb-10">
+            <Image src="/logo.png" alt="Kabyar" width={140} height={45} className="object-contain" priority />
+          </Link>
 
           <Suspense fallback={
             <div className="flex items-center justify-center py-12">

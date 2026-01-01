@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { blogPosts, type BlogPost } from "@/lib/blog-data";
 import { ArrowRight, Calendar, Clock, Tag } from "lucide-react";
 
@@ -95,11 +96,8 @@ export default function BlogPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">K</span>
-              </div>
-              <span className="font-bold text-xl text-gray-900">Kabyar</span>
+            <Link href="/" className="flex items-center">
+              <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain" />
             </Link>
             <nav className="flex items-center gap-4">
               <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
@@ -186,11 +184,8 @@ export default function BlogPage() {
       <footer className="bg-gray-900 text-gray-400 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold">K</span>
-              </div>
-              <span className="font-bold text-white">Kabyar</span>
+            <div className="flex items-center">
+              <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain brightness-0 invert" />
             </div>
             <div className="flex gap-6 text-sm">
               <Link href="/about" className="hover:text-white transition-colors">About</Link>

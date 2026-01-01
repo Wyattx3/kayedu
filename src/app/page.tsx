@@ -269,10 +269,9 @@ export default function HomePage() {
       {/* Floating Header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl">
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" priority />
-            <span className="font-bold text-xl">Kabyar</span>
-          </div>
+          <Link href="/" className="flex items-center">
+            <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain" priority />
+          </Link>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
             <Link href="/tools" className="text-gray-600 hover:text-gray-900 transition">Tools</Link>
@@ -858,9 +857,8 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             {/* Brand */}
             <div className="md:col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" />
-                <span className="font-bold text-xl text-white">Kabyar</span>
+              <div className="flex items-center mb-4">
+                <Image src="/logo.png" alt="Kabyar" width={140} height={45} className="object-contain brightness-0 invert" />
               </div>
               <p className="text-sm">Your intelligent study companion. AI-powered tools for better learning.</p>
             </div>

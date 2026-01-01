@@ -30,9 +30,8 @@ export default function AboutPage() {
       {/* Header */}
       <header className="border-b border-gray-100 sticky top-0 bg-white z-50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Kabyar" width={36} height={36} />
-            <span className="font-bold text-lg text-gray-900">Kabyar</span>
+          <Link href="/" className="flex items-center">
+            <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain" />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <Link href="/tools" className="text-gray-600 hover:text-gray-900">Tools</Link>
@@ -175,11 +174,8 @@ export default function AboutPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-12 px-4">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <span className="text-white font-bold">K</span>
-            </div>
-            <span className="font-bold text-white">Kabyar</span>
+          <div className="flex items-center">
+            <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain brightness-0 invert" />
           </div>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/about" className="hover:text-white transition-colors">About</Link>

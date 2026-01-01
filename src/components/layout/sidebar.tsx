@@ -161,10 +161,9 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className="px-5 py-6 flex items-center gap-3">
-          <Image src="/logo.png" alt="Kabyar" width={36} height={36} className="object-contain" priority />
-          <span className="font-bold text-lg text-gray-900 tracking-tight">Kabyar</span>
-        </div>
+        <Link href="/dashboard" className="px-5 py-6 flex items-center">
+          <Image src="/logo.png" alt="Kabyar" width={120} height={40} className="object-contain" priority />
+        </Link>
 
         {/* Nav */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
