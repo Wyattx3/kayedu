@@ -858,7 +858,7 @@ export default function HomePage() {
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center mb-4">
-                <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto brightness-0 invert" />
+                <Image src="/logo.png" alt="Kabyar" width={280} height={74} className="object-contain h-16 w-auto" />
               </div>
               <p className="text-sm">Your intelligent study companion. AI-powered tools for better learning.</p>
             </div>

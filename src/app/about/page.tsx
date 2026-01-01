@@ -175,7 +175,7 @@ export default function AboutPage() {
       <footer className="bg-gray-900 text-gray-400 py-12 px-4">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center h-8">
-            <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto brightness-0 invert" />
+            <Image src="/logo.png" alt="Kabyar" width={280} height={74} className="object-contain h-16 w-auto" />
           </div>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/about" className="hover:text-white transition-colors">About</Link>
