@@ -24,8 +24,8 @@ export function CookieConsent() {
   const [showPreferences, setShowPreferences] = useState(false);
   const [consent, setConsent] = useState<ConsentState>({
     necessary: true,
-    analytics: false,
-    advertising: false,
+    analytics: true,  // Default ON
+    advertising: true, // Default ON
     timestamp: 0,
   });
 
