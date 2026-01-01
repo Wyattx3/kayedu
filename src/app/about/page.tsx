@@ -28,16 +28,20 @@ export default function AboutPage() {
   return (
     <div className={`min-h-screen bg-white transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
       {/* Header */}
-      <header className="border-b border-gray-100">
+      <header className="border-b border-gray-100 sticky top-0 bg-white z-50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <Image src="/logo.png" alt="Kabyar" width={36} height={36} />
             <span className="font-bold text-lg text-gray-900">Kabyar</span>
           </Link>
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-gray-600">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <Link href="/tools" className="text-gray-600 hover:text-gray-900">Tools</Link>
+            <Link href="/blog" className="text-gray-600 hover:text-gray-900">Blog</Link>
+            <Link href="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
+          </nav>
+          <Link href="/register">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 rounded-xl">
+              Get Started
             </Button>
           </Link>
         </div>
@@ -169,17 +173,23 @@ export default function AboutPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-8 px-4">
+      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Kabyar" width={24} height={24} />
-            <span className="text-sm text-gray-600">© 2025 Kabyar. All rights reserved.</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <span className="text-white font-bold">K</span>
+            </div>
+            <span className="font-bold text-white">Kabyar</span>
           </div>
-          <div className="flex items-center gap-6 text-sm text-gray-500">
-            <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms of Service</Link>
-            <a href="mailto:support@kabyar.net" className="hover:text-blue-600 transition-colors">Contact</a>
+          <div className="flex items-center gap-6 text-sm">
+            <Link href="/about" className="hover:text-white transition-colors">About</Link>
+            <Link href="/tools" className="hover:text-white transition-colors">Tools</Link>
+            <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
+          <p className="text-sm">© 2025 Kabyar. All rights reserved.</p>
         </div>
       </footer>
     </div>

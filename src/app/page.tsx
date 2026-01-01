@@ -267,7 +267,8 @@ export default function HomePage() {
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
-            <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition">How it Works</a>
+            <Link href="/tools" className="text-gray-600 hover:text-gray-900 transition">Tools</Link>
+            <Link href="/blog" className="text-gray-600 hover:text-gray-900 transition">Blog</Link>
             <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition">Reviews</a>
           </div>
           <div className="flex items-center gap-2">
@@ -838,22 +839,62 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t">
+      <footer className="py-16 px-6 bg-gray-900 text-gray-400">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" />
-              <div>
-                <span className="font-bold text-lg text-gray-900">Kabyar</span>
-                <p className="text-sm text-gray-500">Study smarter, not harder.</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-3 mb-4">
+                <Image src="/logo.png" alt="Kabyar" width={40} height={40} className="object-contain" />
+                <span className="font-bold text-xl text-white">Kabyar</span>
               </div>
+              <p className="text-sm">Your intelligent study companion. AI-powered tools for better learning.</p>
             </div>
-            <div className="flex gap-8 text-sm text-gray-500">
-              <a href="#" className="hover:text-gray-900 transition">Privacy</a>
-              <a href="#" className="hover:text-gray-900 transition">Terms</a>
-              <a href="#" className="hover:text-gray-900 transition">Contact</a>
+            
+            {/* Tools */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Tools</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/tools/essay-writer" className="hover:text-white transition">Essay Writer</Link></li>
+                <li><Link href="/tools/ai-detector" className="hover:text-white transition">AI Detector</Link></li>
+                <li><Link href="/tools/humanizer" className="hover:text-white transition">Humanizer</Link></li>
+                <li><Link href="/tools/answer-finder" className="hover:text-white transition">Answer Finder</Link></li>
+                <li><Link href="/tools/tutor" className="hover:text-white transition">AI Tutor</Link></li>
+              </ul>
             </div>
-            <p className="text-sm text-gray-500">&copy; 2025 Kabyar. All rights reserved.</p>
+            
+            {/* Resources */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
+                <li><Link href="/tools" className="hover:text-white transition">All Tools</Link></li>
+                <li><Link href="/tools/study-guide" className="hover:text-white transition">Study Guides</Link></li>
+                <li><Link href="/tools/presentation" className="hover:text-white transition">Presentations</Link></li>
+                <li><Link href="/tools/homework-helper" className="hover:text-white transition">Homework Help</Link></li>
+              </ul>
+            </div>
+            
+            {/* Company */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Company</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/about" className="hover:text-white transition">About Us</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
+                <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
+              </ul>
+            </div>
+          </div>
+          
+          {/* Bottom */}
+          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm">&copy; 2025 Kabyar. All rights reserved.</p>
+            <div className="flex gap-6 text-sm">
+              <Link href="/privacy" className="hover:text-white transition">Privacy</Link>
+              <Link href="/terms" className="hover:text-white transition">Terms</Link>
+              <Link href="/contact" className="hover:text-white transition">Contact</Link>
+            </div>
           </div>
         </div>
       </footer>
