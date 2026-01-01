@@ -96,8 +96,8 @@ export default function BlogPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" />
+            <Link href="/" className="flex items-center h-8">
+              <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto" />
             </Link>
             <nav className="flex items-center gap-4">
               <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
@@ -184,8 +184,8 @@ export default function BlogPage() {
       <footer className="bg-gray-900 text-gray-400 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
-              <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto brightness-0 invert" />
+            <div className="flex items-center h-8">
+              <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto brightness-0 invert" />
             </div>
             <div className="flex gap-6 text-sm">
               <Link href="/about" className="hover:text-white transition-colors">About</Link>

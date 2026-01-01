@@ -268,9 +268,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Floating Header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 px-6 py-2 flex items-center justify-between h-14">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 px-6 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center h-8">
-            <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" priority />
+            <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto" priority />
           </Link>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
@@ -858,7 +858,7 @@ export default function HomePage() {
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center mb-4">
-                <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto brightness-0 invert" />
+                <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto brightness-0 invert" />
               </div>
               <p className="text-sm">Your intelligent study companion. AI-powered tools for better learning.</p>
             </div>

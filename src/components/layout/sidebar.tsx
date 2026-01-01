@@ -161,9 +161,9 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <Link href="/dashboard" className="px-5 py-4 flex items-center">
-          <Image src="/logo.png" alt="Kabyar" width={90} height={24} className="object-contain h-6 w-auto" priority />
-        </Link>
+        <div className="px-5 py-6 flex items-center">
+          <Image src="/logo.png" alt="Kabyar" width={120} height={32} className="object-contain h-8 w-auto" priority />
+        </div>
 
         {/* Nav */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
