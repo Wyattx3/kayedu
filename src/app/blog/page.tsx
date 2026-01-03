@@ -1,12 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { blogPosts, type BlogPost } from "@/lib/blog-data";
 import { ArrowRight, Calendar, Clock, Tag } from "lucide-react";
-
-export const metadata = {
-  title: "Blog - Kabyar | AI Writing & Study Tips",
-  description: "Expert guides on AI writing, study techniques, homework help, and academic success. Learn how to study smarter with Kabyar.",
-};
 
 const categories = [
   { id: "all", name: "All Posts" },
@@ -85,10 +83,17 @@ function PostCard({ post }: { post: BlogPost }) {
 }
 
 export default function BlogPage() {
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
   // Sort posts by date (newest first)
   const sortedPosts = [...blogPosts].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  // Filter posts by selected category
+  const filteredPosts = selectedCategory === "all" 
+    ? sortedPosts 
+    : sortedPosts.filter(post => post.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -139,8 +144,9 @@ export default function BlogPage() {
             {categories.map((cat) => (
               <button
                 key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  cat.id === "all"
+                  selectedCategory === cat.id
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -154,11 +160,17 @@ export default function BlogPage() {
 
       {/* Posts Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedPosts.map((post) => (
-            <PostCard key={post.slug} post={post} />
-          ))}
-        </div>
+        {filteredPosts.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg">No posts found in this category.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPosts.map((post) => (
+              <PostCard key={post.slug} post={post} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* CTA */}
