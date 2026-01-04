@@ -24,6 +24,9 @@ const greatVibes = Great_Vibes({
 export const metadata: Metadata = {
   title: "Kabyar - Your Intelligent Study Companion",
   description: "AI-powered learning assistant for GED, IGCSE, OTHM and all students. Essays, tutoring, homework help, and more.",
+  verification: {
+    google: "Z3yfBQJDJVNhJUAYvWSv4DMh6d3tJdWNfUi5WdeQmy4",
+  },
 };
 
 export default function RootLayout({
